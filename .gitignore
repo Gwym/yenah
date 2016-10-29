@@ -1,0 +1,16 @@
+# Logs
+logs
+*.log
+
+#sourcemap
+*.map
+
+# Dependency directories
+node_modules
+
+# Typescript typings
+typings
+typings.json
+
+#EDI
+.vscode
