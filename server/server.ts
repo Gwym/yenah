@@ -148,9 +148,6 @@ var server = http.createServer((req, res) => {
 
         file.serve(req, res, function(err: any, result: any) {
           if (err) {
-
-            console.log('not found : ' + req.url);
-
             if (req.url === '/pagecount') {
               // TODO (1) : check mongodb, get pagecount
               res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
@@ -158,6 +155,7 @@ var server = http.createServer((req, res) => {
             }
             else if (req.url === '/ready') { // Openshift readinessProbe
               // TODO (1) : check mongodb
+              console.log('ready');
               res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
               res.end('<!DOCTYPE html><html><head><head><body>pagecount : 0</body></html>');
             }

@@ -16,9 +16,6 @@ typings.json
 # EDI
 .vscode
 
-# hosting
-openshift
-
 #tests
 tests
 webapp/tests

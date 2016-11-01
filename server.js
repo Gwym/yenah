@@ -92,12 +92,12 @@ var server = http.createServer(function (req, res) {
         (req.on('end', function () {
             file.serve(req, res, function (err, result) {
                 if (err) {
-                    console.log('not found : ' + req.url);
                     if (req.url === '/pagecount') {
                         res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
                         res.end('<!DOCTYPE html><html><head><head><body>pagecount : 0</body></html>');
                     }
                     else if (req.url === '/ready') {
+                        console.log('ready');
                         res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
                         res.end('<!DOCTYPE html><html><head><head><body>pagecount : 0</body></html>');
                     }
