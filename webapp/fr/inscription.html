@@ -10,6 +10,7 @@
 	<title>yenah - Elevez votre esprit</title>
 	<meta name="description" content="yenah, jeu en ligne de simulation d'évolution">
 	<meta name="keywords" content="jeu,multijoueur,stratégie,jdr,fantastique,univers,élevage,esprit,ia">
+	<script type="text/javascript" src="../js/client.js" defer></script>
 </head>
 
 <body>
@@ -27,10 +28,10 @@
 			<br>
 		</section>
 		<section class="interlocutor">
-			<form action="" class="signin-form">
-				<input type="email" name="name" placeholder="Adresse courriel" required="">
-				<input type="text" name="name" placeholder="Code d'invitation" required="">
-				<button id="button-login" onclick="do_signin(this)">Inscription</button>
+			<form action="" class="signin-form" onsubmit="XSubmit(this); return false;">
+				<input type="email" name="name" id="input_mail" placeholder="Adresse courriel" required="">
+				<input type="text" name="name" id="input_code" placeholder="Code d'invitation" required="">
+				<button id="button-login">Inscription</button>
 			</form>
 
 			

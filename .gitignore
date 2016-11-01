@@ -1,8 +1,12 @@
 # Logs
 logs
 *.log
+*.txt
 
-#sourcemap
+# compiled 
+*.js
+
+# sourcemap
 *.map
 
 # Dependency directories
@@ -12,5 +16,12 @@ node_modules
 typings
 typings.json
 
-#EDI
+# EDI
 .vscode
+
+# hosting
+openshift
+
+#tests
+tests
+webapp/tests

@@ -9,6 +9,8 @@ import * as ws from 'ws';
 import * as fileServer from 'node-static';
 import * as mongodb from 'mongodb';
 
+enum HttpStatusCode { Ok = 200, BadRequest = 400, MethodNotAllowed = 405, PayloadTooLarge = 413 }
+
 var WebSocketServer = ws.Server;
 var MongoClient = mongodb.MongoClient;
 
@@ -132,35 +134,97 @@ initDb( function (err: any) {
   console.log('Error connecting to Mongo. Message:\n' + err);
 });
 
-
 var server = http.createServer((req, res) => { 
 
   req.headers.url = req.url;
   req.headers.ip = req.socket.remoteAddress;
-    
-  (<NodeJS.ReadableStream>req.addListener('end', function() {
-    
-    // TODO (1) : i18n, parse browser language, redirect
+ 
+  var jsonString = '';
 
-    file.serve(req, res, function(err: any, result: any) {
-      if (err) {
+  if (req.method === 'GET') {
+    (req.on('end', function() {
+        
+        // TODO (1) : i18n, parse browser language, redirect
 
-      if (req.url === '/pagecount') { // Openshift readinessProbe
-          // TODO (1) : check mongodb, get pagecount
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<!DOCTYPE html><html><head><head><body>pagecount : 0</body></html>');
-        }
-        else {
-          logger.info(req.headers.toString());
-          console.log(err);
-          console.log(result);
-          logger.error(err);
-          res.writeHead(err.status, err.headers);
-          res.end('<!DOCTYPE html><html><head><head><body>404 : ressource not found.</body></html>');
-        }
-      }
-    });
-  })).resume();
+        file.serve(req, res, function(err: any, result: any) {
+          if (err) {
+
+            console.log('not found : ' + req.url);
+
+            if (req.url === '/pagecount') {
+              // TODO (1) : check mongodb, get pagecount
+              res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
+              res.end('<!DOCTYPE html><html><head><head><body>pagecount : 0</body></html>');
+            }
+            else if (req.url === '/ready') { // Openshift readinessProbe
+              // TODO (1) : check mongodb
+              res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
+              res.end('<!DOCTYPE html><html><head><head><body>pagecount : 0</body></html>');
+            }
+            else if (req.url.indexOf('/req?json=') === 0) {  // TODO (3) : DRY server/client
+              
+              var jsonString = decodeURIComponent(req.url.substring(10));
+              console.log(jsonString);
+
+              try {
+                JSON.parse(jsonString);
+
+                // dispatchJsonCommand();
+                res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
+                res.end(jsonString);
+
+              }
+              catch(e) {
+                logger.error(e);
+                logger.info(req.url);
+                res.writeHead(HttpStatusCode.BadRequest, {'Content-Type': 'text/plain'});
+                res.end();
+              }
+
+
+            }
+            else {
+              logger.info(toStr(req.headers));
+              console.log(err);
+              console.log(result);
+              logger.error(err);
+              res.writeHead(err.status, err.headers);
+              res.end('<!DOCTYPE html><html><head><head><body>404 : ressource not found.</body></html>');
+            }
+          }
+        });
+      })).resume();
+  }
+/*  else if (req.method === 'POST') {
+
+        req.on('data', function(data: string) {
+            jsonString += data;
+            if (jsonString.length > 1e6) {
+                jsonString = "";
+                res.writeHead(HttpStatusCode.PayloadTooLarge, {'Content-Type': 'text/plain'});
+                res.end();
+                req.abort();
+            }
+        });
+
+        req.on('end', function() {
+          try {
+            var gist = JSON.parse(jsonString);
+          }
+          catch(e) {
+            logger.error(e);
+            logger.info(jsonString);
+            res.writeHead(HttpStatusCode.BadRequest, {'Content-Type': 'text/plain'});
+            res.end();
+          }
+        });
+
+  } */
+  else { 
+    logger.error('Method not allowed ' + toStr(req.headers));
+    res.writeHead(HttpStatusCode.MethodNotAllowed, {'Content-Type': 'text/plain'});
+    res.end(); 
+  }
 
 }).listen(env.port, env.ipaddress);
 
