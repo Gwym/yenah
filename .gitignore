@@ -3,9 +3,6 @@ logs
 *.log
 *.txt
 
-# compiled 
-*.js
-
 # sourcemap
 *.map
 
