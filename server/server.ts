@@ -41,7 +41,7 @@ catch (e) {  // file not found, parse error, ... => set default
     port: 8080,
     mailServer: 'http://localhost/sendmail.php',
     mailSecret: 'secret',
-    mongoURL: 'mongodb://localhost:27017/yenah', // mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
+    mongoURL: null, // mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
     mongoURLLabel: '',
     captchaSecret: 'secret'
   }
@@ -176,13 +176,15 @@ var server = http.createServer((req, res) => {
   req.headers.url = req.url;
   req.headers.ip = req.socket.remoteAddress;
 
-  try {
+  console.log(req.url);
+
+ /* try {
     var col = db.collection('tracks');
     col.insert({ date: Date.now(), req: req.headers });
   }
   catch (e) {
     console.error(e);
-  }
+  } */
 
   var jsonString = '';
 

@@ -25,7 +25,7 @@ catch (e) {
         port: 8080,
         mailServer: 'http://localhost/sendmail.php',
         mailSecret: 'secret',
-        mongoURL: 'mongodb://localhost:27017/yenah',
+        mongoURL: null,
         mongoURLLabel: '',
         captchaSecret: 'secret'
     };
@@ -108,13 +108,7 @@ initDb(function (err) {
 var server = http.createServer(function (req, res) {
     req.headers.url = req.url;
     req.headers.ip = req.socket.remoteAddress;
-    try {
-        var col = db.collection('tracks');
-        col.insert({ date: Date.now(), req: req.headers });
-    }
-    catch (e) {
-        console.error(e);
-    }
+    console.log(req.url);
     var jsonString = '';
     if (req.method === 'GET') {
         (req.on('end', function () {
