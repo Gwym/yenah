@@ -1,24 +1,56 @@
 "use strict";
+var fs = require('fs');
 var http = require('http');
 var ws = require('ws');
 var fileServer = require('node-static');
 var mongodb = require('mongodb');
-var HttpStatusCode;
+var dispatcher_1 = require("./dispatcher");
 (function (HttpStatusCode) {
     HttpStatusCode[HttpStatusCode["Ok"] = 200] = "Ok";
     HttpStatusCode[HttpStatusCode["BadRequest"] = 400] = "BadRequest";
     HttpStatusCode[HttpStatusCode["MethodNotAllowed"] = 405] = "MethodNotAllowed";
     HttpStatusCode[HttpStatusCode["PayloadTooLarge"] = 413] = "PayloadTooLarge";
-})(HttpStatusCode || (HttpStatusCode = {}));
+})(exports.HttpStatusCode || (exports.HttpStatusCode = {}));
+var HttpStatusCode = exports.HttpStatusCode;
 var WebSocketServer = ws.Server;
 var MongoClient = mongodb.MongoClient;
-var env = {
-    protocol: 'yh1',
-    ipaddress: process.env.IP || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
-    port: process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
-    mongoURL: process.env.OPENSHIFT_MONGODB_DB_URL || process.env.MONGO_URL,
-    mongoURLLabel: ''
-};
+try {
+    exports.env = JSON.parse(fs.readFileSync('configuration.json').toString());
+}
+catch (e) {
+    console.log(e);
+    exports.env = {
+        protocol: 'yh1',
+        ipaddress: '0.0.0.0',
+        port: 8080,
+        mailServer: 'http://localhost/sendmail.php',
+        mailSecret: 'secret',
+        mongoURL: 'mongodb://localhost:27017/yenah',
+        mongoURLLabel: '',
+        captchaSecret: 'secret'
+    };
+}
+exports.env.ipaddress = process.env.IP || process.env.OPENSHIFT_NODEJS_IP || exports.env.ipaddress;
+exports.env.port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || exports.env.port;
+exports.env.mongoURL = process.env.OPENSHIFT_MONGODB_DB_URL || process.env.MONGO_URL || exports.env.mongoURL;
+exports.env.mongoURLLabel = '';
+exports.env.mailServer = process.env.OPENSHIFT_MAIL_SERVER || exports.env.mailServer;
+exports.env.mailSecret = process.env.OPENSHIFT_MAIL_SECRET || exports.env.mailSecret;
+exports.env.mailSecret = process.env.OPENSHIFT_CAPTCHA_SECRET || exports.env.mailSecret;
+if (exports.env.mongoURL == null && process.env.DATABASE_SERVICE_NAME) {
+    var mongoServiceName = process.env.DATABASE_SERVICE_NAME.toUpperCase(), mongoHost = process.env[mongoServiceName + '_SERVICE_HOST'], mongoPort = process.env[mongoServiceName + '_SERVICE_PORT'], mongoDatabase = process.env[mongoServiceName + '_DATABASE'], mongoPassword = process.env[mongoServiceName + '_PASSWORD'], mongoUser = process.env[mongoServiceName + '_USER'];
+    if (mongoHost && mongoPort && mongoDatabase) {
+        exports.env.mongoURLLabel = exports.env.mongoURL = 'mongodb://';
+        if (mongoUser && mongoPassword) {
+            exports.env.mongoURL += mongoUser + ':' + mongoPassword + '@';
+        }
+        exports.env.mongoURLLabel += mongoHost + ':' + mongoPort + '/' + mongoDatabase;
+        exports.env.mongoURL += mongoHost + ':' + mongoPort + '/' + mongoDatabase;
+    }
+    else {
+        console.warn('MongoDB configuration error ' + mongoHost + ' ' + mongoPort + ' ' + mongoDatabase);
+    }
+}
 var toStr = function (o) {
     var o_str = '';
     for (var k in o) {
@@ -30,6 +62,7 @@ var toStr = function (o) {
     }
     return o_str;
 };
+console.log(toStr(exports.env));
 var file = new fileServer.Server('webapp', { cache: 0 });
 var logger = {
     info: function (s) {
@@ -52,33 +85,21 @@ var users = {
         return new User('Test', 'test', 'test');
     }
 };
-console.log('mongoURL :' + env.mongoURL + ' ' + process.env.DATABASE_SERVICE_NAME);
-console.log('server :' + env.ipaddress + ' ' + env.port);
-if (env.mongoURL == null && process.env.DATABASE_SERVICE_NAME) {
-    var mongoServiceName = process.env.DATABASE_SERVICE_NAME.toUpperCase(), mongoHost = process.env[mongoServiceName + '_SERVICE_HOST'], mongoPort = process.env[mongoServiceName + '_SERVICE_PORT'], mongoDatabase = process.env[mongoServiceName + '_DATABASE'], mongoPassword = process.env[mongoServiceName + '_PASSWORD'], mongoUser = process.env[mongoServiceName + '_USER'];
-    if (mongoHost && mongoPort && mongoDatabase) {
-        env.mongoURLLabel = env.mongoURL = 'mongodb://';
-        if (mongoUser && mongoPassword) {
-            env.mongoURL += mongoUser + ':' + mongoPassword + '@';
-        }
-        env.mongoURLLabel += mongoHost + ':' + mongoPort + '/' + mongoDatabase;
-        env.mongoURL += mongoHost + ':' + mongoPort + '/' + mongoDatabase;
-    }
-    else {
-        console.warn('MongoDB configuration error ' + mongoHost + ' ' + mongoPort + ' ' + mongoDatabase);
-    }
-}
+var db;
 var initDb = function (callback) {
-    if (env.mongoURL == null) {
-        console.error('MongoDB URL Error : null');
+    if (exports.env.mongoURL == null) {
+        console.error('initDb > MongoDB URL Error : null');
         return;
     }
-    MongoClient.connect(env.mongoURL, function (err, conn) {
+    MongoClient.connect(exports.env.mongoURL, function (err, conn) {
         if (err) {
+            console.error('initDb > MongoDB Error : ');
+            console.error(err);
             callback(err);
             return;
         }
-        console.log('Connected to MongoDB at: %s', env.mongoURL);
+        db = conn;
+        console.log('Connected to MongoDB at: %s', exports.env.mongoURL);
     });
 };
 initDb(function (err) {
@@ -87,6 +108,13 @@ initDb(function (err) {
 var server = http.createServer(function (req, res) {
     req.headers.url = req.url;
     req.headers.ip = req.socket.remoteAddress;
+    try {
+        var col = db.collection('tracks');
+        col.insert({ date: Date.now(), req: req.headers });
+    }
+    catch (e) {
+        console.error(e);
+    }
     var jsonString = '';
     if (req.method === 'GET') {
         (req.on('end', function () {
@@ -102,19 +130,10 @@ var server = http.createServer(function (req, res) {
                         res.end('<!DOCTYPE html><html><head><head><body>pagecount : 0</body></html>');
                     }
                     else if (req.url.indexOf('/req?json=') === 0) {
-                        var jsonString = decodeURIComponent(req.url.substring(10));
-                        console.log(jsonString);
-                        try {
-                            JSON.parse(jsonString);
+                        dispatcher_1.dispatchJsonCommand(req.url.substring(10), function (ack) {
                             res.writeHead(HttpStatusCode.Ok, { 'Content-Type': 'text/html' });
-                            res.end(jsonString);
-                        }
-                        catch (e) {
-                            logger.error(e);
-                            logger.info(req.url);
-                            res.writeHead(HttpStatusCode.BadRequest, { 'Content-Type': 'text/plain' });
-                            res.end();
-                        }
+                            res.end(JSON.stringify(ack));
+                        });
                     }
                     else {
                         logger.info(toStr(req.headers));
@@ -133,15 +152,15 @@ var server = http.createServer(function (req, res) {
         res.writeHead(HttpStatusCode.MethodNotAllowed, { 'Content-Type': 'text/plain' });
         res.end();
     }
-}).listen(env.port, env.ipaddress);
-console.log('%s: Node server started on %s:%d', Date(), env.ipaddress, env.port);
+}).listen(exports.env.port, exports.env.ipaddress);
+console.log('%s: Node server started on %s:%d', Date(), exports.env.ipaddress, exports.env.port);
 var options = { server: server, clientTracking: true };
 var wss = new WebSocketServer(options, function () {
     console.log('WS > listen callback ');
 });
 var ws_connection_counter = 0;
 wss.on('connection', function (ws) {
-    if (ws.protocol !== env.protocol) {
+    if (ws.protocol !== exports.env.protocol) {
         console.log('WS > bad protocol, closing ' + toStr(ws));
         ws.close();
         return;

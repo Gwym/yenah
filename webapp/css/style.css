@@ -33,6 +33,22 @@ article {
     text-align: center;
 }
 
+.shown {
+    display: block;
+}
+
+.hidden {
+    display: none;
+}
+
+#captcha {
+    text-align: center;
+    padding: 10px;
+}
+.g-recaptcha {
+    display: inline-block;
+}
+
 @media screen and (max-width:600px) {
     #logo {
         position: relative;
@@ -81,10 +97,20 @@ article {
         background: linear-gradient(#7b6, #584);
     }
 
+    form button:disabled {
+        background: linear-gradient(#999, #777);
+        color: silver;
+    }
+
     form button:hover {
         color: silver;
         background: linear-gradient(#8c6, #695);
         transition: .5s all;
+    }
+
+    form button[disabled]:hover {
+        background: linear-gradient(#999, #777);
+        color: silver;
     }
 }
 
@@ -159,11 +185,22 @@ article {
         background: linear-gradient(#7b6, #584);
     }
 
+    form button:disabled {
+        background: linear-gradient(#999, #777);
+        color: silver;
+    }
+
     form button:hover {
         color: silver;
         background: linear-gradient(#8c6, #695);
         transition: .5s all;
     }
+
+    form button[disabled]:hover {
+        background: linear-gradient(#999, #777);
+        color: silver;
+    }
+
 }
 
 

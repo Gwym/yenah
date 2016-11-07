@@ -10,6 +10,7 @@
     },
     "files": [
         "typings/index.d.ts",
-        "server/server.ts"  
+        "server/dispatcher.ts",       
+        "server/server.ts"
     ]   
 }

@@ -16,6 +16,9 @@ typings.json
 # EDI
 .vscode
 
-#tests
+# tests
 tests
 webapp/tests
+
+# configuration
+configuration.json

@@ -28,13 +28,15 @@
 			<br>
 		</section>
 		<section class="interlocutor">
-			<form action="" class="signin-form" onsubmit="XSubmit(this); return false;">
-				<input type="email" name="name" id="input_mail" placeholder="Adresse courriel" required="">
-				<input type="text" name="name" id="input_code" placeholder="Code d'invitation" required="">
-				<button id="button-login">Inscription</button>
+			<div id="error_display" class="hidden">Une erreur s'est produite, veuillez réessayer plus tard ou contacter le support.</div>
+			<div id="success_display" class="hidden">Votre mot de passe vous a été envoyé, merci de votre inscription.</div>
+			<form id="registration_form" action="" class="signin-form" onsubmit="XSubmit(this); return false;">
+				<input type="email" id="input_mail" placeholder="Adresse courriel" required="">
+				<input type="text" id="input_code" placeholder="Code d'invitation" required="">
+				<div id="captcha"><div id="divcaptcha" class="g-recaptcha"></div></div>
+				<button id="button-login" disabled="true">Inscription</button>
 			</form>
-
-			
+			<script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script>
 		</section>
 		<section class="locutor">
 			<p>&lt;&lt; <a href="/" class="go2root">Accueil</a></p>
