@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="../css/style.css">
+	<title>yenah - Elevez votre esprit</title>
+	<meta name="description" content="yenah, jeu en ligne de simulation d'évolution">
+	<meta name="keywords" content="jeu,multijoueur,stratégie,jdr,fantastique,univers,élevage,esprit,ia">
+	<script type="text/javascript" src="../lib/three.js" defer></script>
+	<script type="text/javascript" src="../js/client.js" defer></script>
+	<script type="text/javascript" defer>
+		window.addEventListener("load", function () {
+			console.log('load > XCheckSession');
+			XCheckSession(document.getElementById('login_form'));
+		});
+	</script>
+</head>
+
+<body>
+	<header>
+		<span id="lang"><a href="../en/index.html">English</a></span>
+		<div id="logo"><img src="logo_text.png" alt="yenah" /></div>
+		<form id="login_form" onsubmit="XSubmitLogin(this); return false;">
+			<input type="text" id="input_login" name="name" placeholder="Identifiant" required="">
+			<input type="password" id="input_password" name="password" placeholder="Mot de passe" required="">
+			<button id="button_login">Connexion</button>
+			<p id="error_display">Une erreur s'est produite.</p>
+		</form>
+		<div id="success_display">
+			<p>Bienvenue, <span id="user_name"></span>.
+				<a href="yenah.html">Jouer</a>
+				<a href="administration.html">Administrer</a>
+				<a href="quitter.html">Déconnexion</a>
+			</p>
+		</div>
+	</header>
+	<article>
+		<section class="locutor">
+			<h1>Bonjour !</h1>
+			<p>Bienvenue sur yenah, un projet de "jeu de la vie" en ligne, mêlant gestion, stratégie, élevage et rôle-play.</p>
+			<p>Tirnamael, la planète de départ, possède un écosystème persistant formé de cycles fermés. Rien ne se perd, rien ne se
+				créée, tout se transforme. Cette évolution est en majeur partie automatique, l'écosystème a ses propres cycles et ses
+				réseaux d'interactions (relations trophiques, évolution génétique des espèces...) et progresse en suivant les principes
+				de l'évolutionnisme, depuis l'apparition de la première forme de vie. Le joueur y incarne un esprit capable d'influencer
+				psychologiquement (donc uniquement indirectement) les créatures de la planète.</p>
+			<p>Pour assister des créatures plus évoluées, créer ou découvrir des technologies, les joueurs (i.e. les esprits) ne peuvent
+				agir que par le biais des créatures qu'ils parviennent à contrôler, en les aidant à survivre, et en les incitant à se
+				reproduire, explorer, découvrir, inventer...</p>
+		</section>
+		<section class="interlocutor">
+			<p>J'aimerai <a href="info.html">en apprendre plus</a> sur l'univers de yenah.</p>
+			<br/>
+			<p>Je souhaite <a href="inscription.html">créer un compte</a> et jouer !</p>
+		</section>
+	</article>
+</body>
+
+</html>

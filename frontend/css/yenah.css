@@ -1,0 +1,356 @@
+
+html, body { 
+    width: 100%; 
+    height: 100%; 
+    margin: 0; 
+    padding: 0;
+    /* overflow: hidden; */
+}
+	
+body { 
+    background-color: white;
+    text-align:center;
+}
+/*body { 
+    background-image: url(sky_bg.jpg) ; 
+    background-size: 100% 100%; 
+     background-size: contain; 
+     background-size: cover;   
+    background-color: white;
+    background-image: url(logo_yh_brown.png);
+    background-repeat:no-repeat;
+    background-position: center center; 
+} */
+
+#canvasWebGl {
+   /*  visibility: hidden; */
+    position: absolute;
+    top: 0;
+    left:0;
+}
+
+#canvasUI {
+    position: absolute;
+    top: 0;
+    left:0;
+}
+
+/*#info_box {
+    position: absolute;
+    display: inline-block;
+    border: 1px solid orange;
+    background: #ffff99;
+    margin: 0 auto; 
+      left: 0;
+  right: 0;
+    text-align: center;
+    padding: 10px;
+    border-radius: 5px;
+    top: 0px;
+
+  
+} */
+
+#info_box{
+    position: fixed;
+    display:inline-block;
+    border: 1px solid orange;
+    background-color: #ffff99;
+    padding: 2px;
+    border-radius: 5px;
+    min-width: 10px;
+    min-height: 10px;
+}
+
+#info_box > p {
+    border: 1px solid #ffff44;
+    background-color: #ffffdd;
+    padding: 2px;
+    margin: 1px;
+    border-radius: 5px;
+    cursor: default;
+}
+
+#info_box > p.error_message{
+    background-color: red;
+}
+
+#main_menu {
+    position: absolute;
+    left: 50%;
+    bottom: 0px;
+}
+
+#main_menu > div {
+    position: relative;
+    left: -50%;
+    border: dotted mediumpurple 1px;
+}
+
+.buttonHighlight {
+    border: 1px solid red;
+    background-color: orange;
+}
+
+#piloted_beings {
+    position: absolute;
+    bottom: 0;
+    left: 0; 
+    height: 74px;  
+   /* border: solid lime 1px; */
+   border-radius: 5px; 
+   background: #999999;
+   margin: 0;
+   padding: 1px;
+   max-width: 50%;
+  /* overflow: auto; */
+   overflow-y: scroll; 
+   /* width: 50%; */
+  /*  overflow-x: auto;
+    overflow-y: hidden;  */
+}
+
+/*.miniCard { */
+#piloted_beings > div {
+    position: relative;
+    display: inline-block;
+    margin: 1px;
+    padding: 0;
+   /* border: 1px solid #555555;  
+    background-color: #ffffff; */
+    background-size: contain;
+    border-radius: 6px; 
+    height: 72px;
+    width: 56px;
+    overflow: hidden;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+#show_being_scene_button {
+    position: absolute;
+    bottom: 70px;
+    left: 5px; 
+    background-color: #999999; 
+    width: 32px;
+    height: 32px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 1.3em;
+    cursor: pointer;
+}
+
+#community {
+    position: absolute;
+    bottom: 0px;
+    right: 0px;
+    height: 80px;
+    max-width: 50%;
+    border: dotted #ffffff 1px;
+}
+
+#community > div {
+    position: relative;
+    display: inline-block;
+    margin: 0px;
+    padding: 5px;
+    border: 1px solid gold;
+    background-color: palegreen; 
+    border-radius: 5px;
+    height: 68px;
+    width: 50px;
+    overflow: hidden;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+/*
+#login_scene {
+   visibility: hidden; 
+   position: absolute;
+   background: silver;
+   width: 100%;
+   height: 100%;
+   display: flex;
+   justify-content: center;
+   align-items: center;
+}
+
+
+#login_scene form {
+    width: 300px;
+    height: 400px;
+    background: white;
+    margin: 0 auto;
+    padding: 30px 40px;
+    text-align: center;
+
+}
+
+#login_scene form input[type=email], #login_scene form input[type=password] {
+	border-radius: 2px;
+	background-color:  #3e4144;
+	width: 170px;
+	height: 39px;
+	margin-bottom: 15px;
+	margin-right: 8px;
+	color: #eee;
+	padding: 0 15px;
+	outline: 0;
+	border: none;
+}
+
+#login_scene form input[type=button] {
+	border-radius: 2px;
+	background-color: #2F7756;
+	padding: 13px 16px;
+	outline: 0;
+	border: none;
+	color: #FFF;
+	font-size: 13px;
+	font-weight: bold;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+}
+*/
+
+#being_scene {
+    visibility: hidden;
+    position: absolute;
+    background: silver;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+
+#being_scene > div {
+    background: white;
+	width: 50%;
+    height: 100%;
+/*	margin: 20px; */
+    text-align: center;
+}
+
+#piloted {
+   /* height: 100%;
+    width: 100%; */
+     flex: 1 1 auto;
+     overflow-y : scroll; 
+}
+
+.deckContainer {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+}
+
+.deckHeader {
+   padding: 1em; 
+   flex: 0 1 auto;
+  /* The above is shorthand for:
+  flex-grow: 0,
+  flex-shrink: 1,
+  flex-basis: auto
+  */
+}
+
+.pilotedStandard {
+    background-color: maroon;
+}
+
+.pilotedHighlight {
+    background-color: red;
+}
+
+#pilotable {
+  /*  height: 100%;
+    width: 100%; */
+    flex: 1 1 auto;
+    overflow-y : scroll; 
+}
+
+.pilotableStandard {
+    background-color: seagreen; 
+}
+
+.pilotableHighlight {
+    background-color: lime;
+}
+
+#being_scene > div > div > div { /* .card */
+   /* float: left; */
+   display: inline-block;
+    margin: 5px;
+  /*  padding: 10px; */
+    border-radius: 10px;
+    height: 116px;
+    width: 90px;
+}
+
+.pilotedCard {
+  /*  background-color: orange;
+    background-image: url(logo_yellow.png); */
+    border: 1px solid gold;
+}
+
+.pilotableCard {
+  /*  background-color: green;
+    background-image: url(logo_lime.png); */
+    border: 1px solid green;
+}
+
+#show_main_scene_button {
+    position: absolute;
+    top: 1em; 
+    left: 50%;
+}
+
+#show_main_scene_button > span {
+    position: relative;
+    left: -50%;
+    background-color: #99ff99; 
+    border: 1px solid #2e8b57;
+    width: 48px;
+    height: 48px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 1.3em;
+    cursor: pointer;
+}
+
+#ActorCard {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 200px;
+    background-color: #ff0000
+}
+
+#ActorCard p {
+    cursor: default;
+    margin: 1px;
+}
+
+#TargetCellCard {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 200px;
+    background-color: #00ff00;
+}
+
+#TargetCellCard p {
+    cursor: default;
+    margin: 1px;
+}
+
+#TargetEntityCard {
+
+    position: relative;
+    width: 180px;
+    margin: 8px;
+    background-color: #d972ff;
+}

@@ -18,7 +18,11 @@ typings.json
 
 # tests
 tests
-webapp/tests
+frontend/tests
 
 # configuration
 configuration.json
+
+# build
+build
+frontend/js/client.js

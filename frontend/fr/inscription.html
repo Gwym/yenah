@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="../css/style.css">
+
+	<title>yenah - Elevez votre esprit</title>
+	<meta name="description" content="yenah, jeu en ligne de simulation d'évolution">
+	<meta name="keywords" content="jeu,multijoueur,stratégie,jdr,fantastique,univers,élevage,esprit,ia">
+	<script type="text/javascript" src="../lib/three.js" defer></script>
+	<script type="text/javascript" src="../js/client.js" defer></script>
+</head>
+
+<body>
+	<header>
+		<div id="logo"><img src="logo_text.png" alt="yenah" /></div>
+	</header>
+	<article>
+		<section class="locutor">
+			<p>&lt;&lt; <a href="/" class="go2root">Accueil</a></p>
+			<h1>Inscription</h1>
+			<p>Les inscriptions publiques sont fermées, les inscriptions pour test requièrent un code d'invitation.</p>
+			<p>Le jeu est actuellement en cours de développement et de test, consultez le <a href="http://yenah.blogspot.com/">blog</a>				du projet pour être tenu informé de son avancement.</p>
+			<br>
+			<p>A bientôt. </p>
+			<br>
+		</section>
+		<section class="interlocutor">
+			<div id="error_display" class="hidden">Une erreur s'est produite, veuillez réessayer plus tard ou contacter le support.</div>
+			<div id="success_display" class="hidden">Votre compte été créé, merci de votre inscription <span id="user_name"></span>. <a href="index.html">Se connecter</a></div>
+			<form id="registration_form" action="" class="signin-form" onsubmit="XSubmitRegistration(this); return false;">
+				<input type="text" id="input_code" placeholder="Code d'invitation" required="">
+				<input type="text" id="input_name" placeholder="Pseudonyme" required="">
+				<input type="email" id="input_mail" placeholder="Adresse courriel" required="">
+				<input type="password" id="input_password" placeholder="Mot de passe" required="">
+				<p class="indication">Le mot de passe doit contenir au minimum six caractères dont au moins un nombre, une minuscule et une majuscule.</p>
+				<input type="text" id="input_date" placeholder="Date de naissance"  required=""> <!--onfocus="(this.type='date')" -->
+				<p class="indication">Date de naissance, requise pour toute demande de récupération de l'identifiant et/ou du mot de passe.</p>
+				<p class="indication">Le jeu peut présenter des contenus générés par les utilisateurs ainsi que par un système de génération automatique, contenus qui peuvent ne pas être adaptés à une certain audience.
+					Tout joueur mineur reconnait avoir reçu l'autorisation d'un représentant majeur pour se connecter.
+				</p>
+				<div id="captcha"><div id="divcaptcha" class="g-recaptcha"></div></div>
+				<p>En vous inscrivant et en utilisant le jeu, vous reconnaissez avoir pris connaissance et avoir accepté les <a href="conditions.html" target="_blank" >conditions</a>.</p>
+				<button id="signin_button" >Inscription</button>
+			</form>
+		<!--	<script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script> -->
+		</section>
+		<section class="locutor">
+			<p>&lt;&lt; <a href="/" class="go2root">Accueil</a></p>
+		</section>
+	</article>
+</body>
+
+</html>

@@ -4,13 +4,9 @@
 
 Projet de "jeu de la vie" en ligne (simulation d'évolution)
 
-Site Web : http://yenah.net
-
 (en)
 
 Project of online "Webgame of life" (simulation of evolution)
-
-Website : http://yenah.net
 
 # building
 
@@ -43,18 +39,18 @@ Go to the root folder (containing the server side tsconfig.json) and compile
 tsc -p
 ```
 
-Client Webapp building :
+Client frontend building :
 =================
 
 With Visual Studio Code
 -----------------------
 
-Open the /webapp folder (containing the client side tsconfig.json), hit Ctrl-Maj-B to compile. 
+Open the /frontend folder (containing the client side tsconfig.json), hit Ctrl-Maj-B to compile. 
 
 With command line
 -----------------
 
-Go to the /webapp folder (containing the client side tsconfig.json) and type
+Go to the /frontend folder (containing the client side tsconfig.json) and type
 
 ```
 tsc -p

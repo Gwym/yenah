@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>yenah</title>
+	<link rel="stylesheet" type="text/css" href="../css/yenah.css" />
+	<script type="text/javascript" src="../lib/three.js" defer></script>
+	<script type="text/javascript" src="../js/client.js" defer></script>
+	<script type="text/javascript">
+		window.addEventListener("load", function () {
+			createEngine();
+		});
+	</script>
+</head>
+
+<body>
+	<canvas id="canvasWebGl"></canvas>
+<!--	<canvas id="canvasUI"></canvas> -->
+
+	<div id="being_scene">
+		<div class="deckContainer">
+			<div id="display_piloted_message" class="deckHeader">Vos créatures</div>
+			<div id="piloted" class="pilotedStandard" draggable="false"></div>
+		</div>
+		<div class="deckContainer">
+			<div id="display_pilotable_message" class="deckHeader"></div>
+			<div id="pilotable" class="pilotableStandard" draggable="false"></div>
+		</div>
+		
+	</div>
+
+	<!--<div id='main_menu'>
+		<div>
+			<button id="logout_button">x</button>
+		</div>
+	</div>-->
+
+	<div id="show_being_scene_button">+</div>
+	<div id='piloted_beings'></div>
+
+	<!-- <div id='community'>
+		<div id="view_community_button">+</div>
+		<div>Ami</div>
+		<div>Ennemi</div> 
+	</div> -->
+
+	<div id="show_main_scene_button"><span>Ok</span></div>
+
+	<div id="info_box"></div>
+</body>
+
+</html>

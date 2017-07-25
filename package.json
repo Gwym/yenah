@@ -6,7 +6,8 @@
   "dependencies": {
     "ws": "~0",
     "mongodb": "^2.1.16",
-    "node-static": "^0.7.8"
+    "node-static": "^0.7.8",
+    "bcrypt": "^1.0.1"
   },
   "engine": {
     "node": "*",

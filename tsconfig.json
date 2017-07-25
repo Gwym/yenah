@@ -1,16 +1,34 @@
 {
     "compilerOptions": {
-        "target": "ES5",
-        "module": "commonjs",
+        "target": "ES6",
+        "module": "commonjs", 
         "noImplicitAny": true,
         "removeComments": true,
         "preserveConstEnums": false,
         "sourceMap": true,
-        "outDir": "."
+        "outDir": "./build",
+        "strictNullChecks": true
     },
     "files": [
         "typings/index.d.ts",
-        "server/dispatcher.ts",       
-        "server/server.ts"
+        "src/numeric/stochastic.ts",
+        "src/services/shared/messaging.ts",
+        "src/services/staticserver.ts",
+        "src/services/logger.ts",
+        "src/services/dispatcher.ts",
+        "src/services/sesam.ts",
+
+        "src/configuration.ts",
+        "src/yenah/shared/messaging.ts",
+        "src/yenah/shared/concept.ts",
+        "src/yenah/shared/action.ts",
+        "src/yenah/persistor.ts",
+        "src/yenah/db.ts",
+        "src/yenah/tests/unittests.ts",
+        "src/yenah/tests/tests.ts",
+        "src/yenah/admin.ts",
+        "src/yenah/engine.ts",  
+        "src/server.ts",
+        "src/epigen/gen_shared_frontend.ts"
     ]   
 }

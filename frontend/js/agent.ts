@@ -1,0 +1,5 @@
+
+class RelAgent  extends Agent  {
+
+
+} 
