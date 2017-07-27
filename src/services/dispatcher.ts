@@ -9,10 +9,11 @@ import { configuration } from '../configuration'
 import { StaticServer, StaticServerOptions } from './staticserver';
 import {
   websocketProtocolVersion, XJsonUrl, MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage,
-  UserOptions, UserSessionAck, XRegistrationRequest, XLoginRequest, ErrorMessage, ErrMsg, SessionCheckRequest, XConfigureRegistrationAck
+  UserOptions, UserSessionAck, XRegistrationRequest, XLoginRequest, ErrorMessage, ErrMsg, SessionCheckRequest, XConfigureRegistrationAck, checkPasswordStrenght
 } from './shared/messaging'
 import { AsyncPersistor } from "../yenah/persistor"; // TODO (1) : epigen service
 
+// TODO (4) : add json schema to vscode https://code.visualstudio.com/docs/languages/json#_json-schemas-settings
 export interface ConfigurationInterface {
   httpPort: number,
   httpIpAddress?: string,
@@ -26,7 +27,8 @@ export interface ConfigurationInterface {
   mailSecret: string,
   doCheckCaptcha: boolean,
   captchaSecret: string,
-  doCheckInvitationCode: boolean
+  doCheckInvitationCode: boolean,
+  doCheckPasswordStrength: boolean
 }
 
 export enum HttpStatusCode { Ok = 200, BadRequest = 400, Forbidden = 403, NotFound = 404, MethodNotAllowed = 405, PayloadTooLarge = 413, InternalServerError = 500 }
@@ -466,7 +468,8 @@ export abstract class Dispatcher implements UserSessionSyncManager {
           allowRegistration: configuration.allowRegistration,
           doSendRegistrationMail: configuration.doSendRegistrationMail,
           doCheckCaptcha: configuration.doCheckCaptcha,
-          doCheckInvitationCode: configuration.doCheckInvitationCode
+          doCheckInvitationCode: configuration.doCheckInvitationCode,
+          doCheckPasswordStrength: configuration.doCheckPasswordStrength
         }
         callback(xConfigureRegistrationAck);
       }
@@ -596,6 +599,9 @@ class RegistrationSequence {
         return this.checkCode(cmd.invitationCode);
       })
       .then(() => {
+        return this.checkPasswordStrength(cmd.password);
+      })
+      .then(() => {
         return this.userManager.createUser(cmd);
       })
       .then((userData) => {
@@ -684,7 +690,6 @@ class RegistrationSequence {
 
   private checkCode(code: string): Promise<void> {
 
-
     return new Promise<void>((resolve, reject) => {
 
       if (configuration.doCheckInvitationCode) {
@@ -692,7 +697,7 @@ class RegistrationSequence {
         dbg.log('Checking invitation code ');
 
         if (isNaN(parseInt(code))) {
-          console.info('checkCode > invalid code'); // TODO (5) : check code from database
+          dbg.info('checkCode > invalid code'); // TODO (5) : check code from database
           reject(ErrMsg.InvalidCode);
         }
         else {
@@ -707,6 +712,30 @@ class RegistrationSequence {
     });
   }
 
+  private checkPasswordStrength(password: string): Promise<void> {
+
+    return new Promise<void>((resolve, reject) => {
+
+      if (configuration.doCheckPasswordStrength) {
+
+        dbg.log('Checking password strength ');
+
+        if (checkPasswordStrenght(password)) {
+          dbg.log('password ok');
+          resolve();
+        }
+        else {
+          dbg.info('checkPasswordStrength > invalid code'); 
+          reject(ErrMsg.WeakPassword);
+        }
+      }
+      else {
+        dbg.log('Skip checking pasword strength, configuration.doCheckPasswordStrength:' + configuration.doCheckPasswordStrength);
+        resolve();
+      }
+    });
+  }
+
   private sendRegistrationMail(dstMail: string) {
 
     dbg.log('Sending registration mail : ' + configuration.doSendRegistrationMail);
@@ -714,7 +743,7 @@ class RegistrationSequence {
     return new Promise<void>((resolve, reject) => {
 
       if (typeof dstMail !== 'string') {  // TODO (1) : email checker
-        console.info('sendRegistrationMail > invalid mail'); // TMP
+        dbg.info('sendRegistrationMail > invalid mail'); // TMP
         reject(ErrMsg.InvalidMail);
         return;
       }

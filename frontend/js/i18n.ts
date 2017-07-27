@@ -391,8 +391,8 @@ var i18n_en: I18n.Corpus = {
 	, websocket_disconnected: 'Websocket disconnected'
 //	, session_checking: 'Vérification de la validité de la session'
 	, limited_1_connexion: 'Vous êtes limité a une connexion WebSocket'
-	// enum ToStringId { UnkownCommand, ServerError, DatabaseError, SessionError, LoginError, InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName, DuplicateMail }
-	, x_messages: [ 'Unkown command', 'Server error', 'Database error', 'Session expired', 'Login error', 'Invalid captcha', 'Invalid code', 'Invalid mail', 'Name not available', 'Mail not available']
+	// enum ToStringId { UnkownCommand, ServerError, DatabaseError, SessionError, LoginError, InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName, DuplicateMail, WeakPassword }
+	, x_messages: [ 'Unkown command', 'Server error', 'Database error', 'Session expired', 'Login error', 'Invalid captcha', 'Invalid code', 'Invalid mail', 'Name not available', 'Mail not available', 'Password is too weak']
 	, piloted_availables: spfm('{0} available creature(s)')
 	, piloted_no_available: 'No incarnated creature'
 	, pilotable_availables: spfm('{0} available creature(s)')
@@ -579,8 +579,8 @@ var i18n_fr: I18n.Corpus = {
 	, websocket_disconnected: 'Websocket déconnecté'
 //	, session_checking: 'Vérification de la validité de la session'
 	, limited_1_connexion: 'Vous êtes limité a une connexion WebSocket'	
-	// enum ToStringId { UnkownCommand, ServerError, DatabaseError, SessionError, LoginError, InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName, DuplicateMail }
-	, x_messages: ['Commande inconnue', 'Erreur serveur', 'Erreur base de donnée', 'Session expirée', "Erreur d'identification", 'Captcha invalide', 'Code invalide', 'Email invalide','Nom indisponible','E-mail indisponible']
+	// enum ToStringId { UnkownCommand, ServerError, DatabaseError, SessionError, LoginError, InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName, DuplicateMail, WeakPassword }
+	, x_messages: ['Commande inconnue', 'Erreur serveur', 'Erreur base de donnée', 'Session expirée', "Erreur d'identification", 'Captcha invalide', 'Code invalide', 'Email invalide','Nom indisponible','E-mail indisponible','Mot de passe trop faible']
 	, piloted_availables: spfm('Vous possédez {0} créature(s)')
 	, piloted_no_available: 'Choisissez les créatures à incarner'
 	, pilotable_availables: spfm('{0} créature(s) disponible(s)')

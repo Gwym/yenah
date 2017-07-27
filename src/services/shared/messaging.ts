@@ -13,7 +13,7 @@ export enum MessageType {
 }
 export enum ToStringId {
   UnkownCommand, ServerError, DatabaseError, SessionError, LoginError,
-  InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName, DuplicateMail
+  InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName, DuplicateMail, WeakPassword
   // RequestFailed, Disconnected, UserNotFound
 }
 
@@ -41,7 +41,8 @@ export const ErrMsg = {  // : { [index: string]: ErrorMessage } // TODO (0) ErrM
   InvalidCode: { type: MessageType.Error, toStringId: ToStringId.InvalidCode },
   InvalidMail: { type: MessageType.Error, toStringId: ToStringId.InvalidMail },
   DuplicateName: { type: MessageType.Error, toStringId: ToStringId.DuplicateName },
-  DuplicateMail: { type: MessageType.Error, toStringId: ToStringId.DuplicateMail }
+  DuplicateMail: { type: MessageType.Error, toStringId: ToStringId.DuplicateMail },
+  WeakPassword: { type: MessageType.Error, toStringId: ToStringId.WeakPassword }
 }
 
 /*
@@ -87,10 +88,17 @@ export interface XConfigureRegistrationAck extends s2c_ChannelMessage {
   doSendRegistrationMail: boolean
   doCheckCaptcha: boolean
   doCheckInvitationCode: boolean
+  doCheckPasswordStrength: boolean
 }
 
 export interface XLoginRequest extends c2s_ChannelMessage {
   type: MessageType.Login
   login: string
   password: string
+}
+
+export function checkPasswordStrenght(pwd: string) {
+    // at least six characters, containing one number, one lowercase and one uppercase letter
+    var re = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/;
+    return re.test(pwd);
 }

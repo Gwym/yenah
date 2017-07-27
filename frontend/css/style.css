@@ -38,6 +38,16 @@ article {
     font-size: 0.8em;
 }
 
+.indication_strong_password {
+    color: green;
+    font-size: 0.8em;
+}
+
+.indication_weak_password {
+    color: red;
+    font-size: 0.8em;
+}
+
 #error_display {
     visibility: hidden;
     color: red;

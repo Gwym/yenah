@@ -25,7 +25,8 @@ catch (e) {  // file not found, parse error, ... => set default
     mongoURLLabel: '',
     doCheckCaptcha: false,
     captchaSecret: '',
-    doCheckInvitationCode: false
+    doCheckInvitationCode: false,
+    doCheckPasswordStrength: false
   }
 }
 

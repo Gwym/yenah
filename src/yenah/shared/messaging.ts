@@ -69,9 +69,3 @@ export interface QueryFilter {
     }
 }
 
-export function checkPasswordStrenght(pwd: string) {
-    // at least six characters, containing one number, one lowercase and one uppercase letter
-    var re = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/;
-    return re.test(pwd);
-}
-

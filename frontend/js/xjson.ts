@@ -310,8 +310,8 @@ var xConfigureRegistration = function (form: HTMLFormElement) {
     };
 
     xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
-    xReq.send(); 
-  } 
+    xReq.send();
+  }
 }
 
 
@@ -336,12 +336,36 @@ var xConfigureRegistrationAck: (this: XMLHttpRequest, ev: Event) => any = functi
 
     if (response.allowRegistration) {
 
-      (<HTMLElement>document.getElementById('registration_panel')).style.visibility = 'visible'; 
+      (<HTMLElement>document.getElementById('registration_panel')).style.visibility = 'visible';
       (<HTMLElement>document.getElementById('unallowed_display')).style.visibility = 'hidden';
 
       // FIXME (0) : set/unset required ?
       (<HTMLElement>document.getElementById('input_invitation_code')).style.visibility = response.doCheckInvitationCode ? 'visible' : 'hidden';
-      (<HTMLElement>document.getElementById('password_panel')).style.visibility = response.doSendRegistrationMail ? 'hidden' : ''; // inherited
+
+      if (response.doSendRegistrationMail) {
+        (<HTMLElement>document.getElementById('password_panel')).style.visibility = 'hidden';
+      }
+      else {
+        (<HTMLElement>document.getElementById('password_panel')).style.visibility = ''; // inherited from registration_panel
+        // TODO (4) : password strength meter https://css-tricks.com/password-strength-meter/
+        if (response.doCheckPasswordStrength) {
+          let password_strength_meter = (<HTMLElement>document.getElementById('password_strength_meter'));
+          password_strength_meter.style.visibility = ''; // inherited from password_panel
+          let password_input = (<HTMLInputElement>document.getElementById('input_password'));
+          password_input.addEventListener('input', function () {
+            let val = password_input.value;
+            let goodResult = checkPasswordStrenght(val);
+            if (goodResult) {
+              password_strength_meter.className = 'indication_strong_password';
+            } else {
+              password_strength_meter.className = 'indication_weak_password';
+            }
+          });
+        }
+        else {
+          (<HTMLElement>document.getElementById('password_strength_meter')).style.visibility = 'hidden';
+        }
+      }
 
       if (response.doCheckCaptcha) {
         // TODO (1) : configuration response.captchaUrl ? or other vendors ?
