@@ -8,6 +8,8 @@ Projet de "jeu de la vie" en ligne (simulation d'évolution)
 
 Project of online "Webgame of life" (simulation of evolution)
 
+[[https://github.com/Gwym/yenah/blob/master/design/screenshots/2017-07-25-yenah_desktop.jpg|alt=yenah]]
+
 # building
 
 Prerequisite for building
@@ -41,6 +43,12 @@ tsc -p
 
 Client frontend building :
 =================
+
+To build the client library from server shared library, run :
+
+```
+node /build/epigen/gen_shared_frontend.js
+```
 
 With Visual Studio Code
 -----------------------
