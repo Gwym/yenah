@@ -8,7 +8,7 @@ import { ServerEngine } from './yenah/engine';
 (new MongoPersistor()).connect(configuration.mongoURL).then((persitor) => {
     dbg.info('Connected to MongoDB at: ' + configuration.mongoURL);
 
-    let engine = new ServerEngine(configuration, persitor);
+    new ServerEngine(configuration, persitor);
 });
 
 

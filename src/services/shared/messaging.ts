@@ -1,5 +1,5 @@
 
-// TODO (5) : shared configuration file 
+// TODO (5) : shared client/server configuration file 
 export const websocketProtocolVersion = 'yh1';
 export const XJsonUrl = '/req?json=';
 export const cookieExpiration = 86400000; // 1 day * 24h * 60min * 60s * 1000ms*/
@@ -9,11 +9,11 @@ export interface UserOptions {
 }
 
 export enum MessageType {
-  Error, Registration, Login, SessionCheck, User, ReqPilot, SetPilot, Zone, Action, Admin // TODO (0) : enum extends ??
+  Error, Registration, ConfigureRegistration, Login, SessionCheck, User, ReqPilot, SetPilot, Zone, Action, Admin // TODO (0) : enum extends ??
 }
 export enum ToStringId {
   UnkownCommand, ServerError, DatabaseError, SessionError, LoginError,
-  InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName
+  InvalidCaptcha, InvalidCode, InvalidMail, DuplicateName, DuplicateMail
   // RequestFailed, Disconnected, UserNotFound
 }
 
@@ -40,7 +40,8 @@ export const ErrMsg = {  // : { [index: string]: ErrorMessage } // TODO (0) ErrM
   InvalidCaptcha: { type: MessageType.Error, toStringId: ToStringId.InvalidCaptcha },
   InvalidCode: { type: MessageType.Error, toStringId: ToStringId.InvalidCode },
   InvalidMail: { type: MessageType.Error, toStringId: ToStringId.InvalidMail },
-  DuplicateName: { type: MessageType.Error, toStringId: ToStringId.DuplicateName }
+  DuplicateName: { type: MessageType.Error, toStringId: ToStringId.DuplicateName },
+  DuplicateMail: { type: MessageType.Error, toStringId: ToStringId.DuplicateMail }
 }
 
 /*
@@ -72,7 +73,20 @@ export interface XRegistrationRequest extends c2s_ChannelMessage {
   mail: string
   password: string
   date: Date
-  response: string // CAPTCHA response
+  captchaResponse: string
+  invitationCode: string
+}
+
+export interface XConfigureRegistrationRequest extends c2s_ChannelMessage {
+  type: MessageType.ConfigureRegistration
+}
+
+export interface XConfigureRegistrationAck extends s2c_ChannelMessage {
+  type: MessageType.ConfigureRegistration
+  allowRegistration: boolean
+  doSendRegistrationMail: boolean
+  doCheckCaptcha: boolean
+  doCheckInvitationCode: boolean
 }
 
 export interface XLoginRequest extends c2s_ChannelMessage {

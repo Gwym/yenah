@@ -1,6 +1,8 @@
-import { MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage } from '../../services/shared/messaging'
+// TODO (4) : manage MTU ? (http://bousk.developpez.com/traductions/gafferongames/construire-son-protocole-jeu-reseau/fragmentation-reassemblage-paquets/)
+
+import { MessageType, c2s_ChannelMessage, s2c_ChannelMessage } from '../../services/shared/messaging'
 import { 
-    ActId, CellIdentifier, IndirectionItemIdentifier, AgentOptions, RelZoneDao, 
+    ActId, IndirectionItemIdentifier, RelZoneDao, 
     AgentIdRelOptions, PilotableTransientIdDao, TransientIdentifier 
 } from './concept'
 

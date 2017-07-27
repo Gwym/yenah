@@ -1,12 +1,12 @@
 
 import { dbg, LoggerParts } from '../services/logger'
 
-import { CoreAction, ActionReport, Opportunity } from './shared/action'
+import { CoreAction, ActionReport } from './shared/action'
 import {
-    Constants, Defaults, EntityIdentifier, AgentIdentifier, UserItemIdentifier, AgentItemIdentifier, CellIdentifier, TransientIdentifier,
+    Constants, EntityIdentifier, AgentIdentifier, UserItemIdentifier, AgentItemIdentifier, TransientIdentifier,
     IndirectionItemIdentifier, IndirectEntityIdentifier, ActId, World,
     AgentOptions, EntityOptions, AgentIdRelOptions, PilotableAbsIdDao, PilotableTransientIdDao, ZoneDao, CellDao, RelZoneDao, FurnitureIdDao, AgentIdOptions,
-    EntityBase, Agent, Furniture, Cell, Zone, SpaceRef, Target, EntityInterface
+    EntityBase, Agent, Furniture, Cell, Zone, Target, EntityInterface
 } from './shared/concept';
 import { UserOptions, MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage, ErrMsg } from '../services/shared/messaging'
 import {
@@ -14,15 +14,12 @@ import {
 } from '../services/dispatcher';
 import {
     ZoneRequest, ZoneAck, ActionRequest, PilotRequest, PilotAck, SetPilotRequest, SetPilotAck,
-    QueryFilter,
-    AdminRequest, AdminActId
+    QueryFilter, AdminRequest
 } from './shared/messaging';
 import {
-    AsyncPersistor, IndirectionDictionary, IndirectionSaveDao, IndirectionIdDao, UserDao,
-    SaveZoneDao, SaveByIdDao, SavePosDao, SaveByIdFullDao, SaveByIdVarDao
+    AsyncPersistor, IndirectionDictionary, IndirectionSaveDao, IndirectionIdDao, SaveZoneDao, SaveByIdDao, SavePosDao, SaveByIdFullDao, SaveByIdVarDao
 } from "./persistor";
 
-import { ObjectID } from 'mongodb';
 import { AdminDispatcher } from "./admin";
 
 export class TransactionManager {
@@ -69,7 +66,7 @@ export class AbsZone extends Zone {
 
     actor: AbsAgent
 
-    toRelativeDao(userIId: UserItemIdentifier, absToRel: IndirectionDictionary): RelZoneDao {
+    toRelativeDao(absToRel: IndirectionDictionary): RelZoneDao {
 
         let relFurnitures: FurnitureIdDao[] = [];
         let relAgents: AgentIdOptions[] = [];
@@ -622,7 +619,7 @@ export class ServerEngine extends Dispatcher {
 
                 dbg.log('sendZoneGist for actor ' + absZone.actor.name + ' now:' + absZone.actor.updateDH, LoggerParts.Filename);
 
-                return absZone.toRelativeDao(user.userOptions.iId, indirectionsAbsDic);
+                return absZone.toRelativeDao(indirectionsAbsDic);
             })
             .then((relZoneGist: RelZoneDao) => {
 
@@ -631,7 +628,14 @@ export class ServerEngine extends Dispatcher {
             })
             .catch((e) => {
                 dbg.error(e);
-                user.send(e); // TODO (1) : type error, i18n
+                if (e.type) {
+                    user.send(e); 
+                }
+                else {
+                    // TODO (1) : type error, i18n
+                    user.send(ErrMsg.ServerError);
+                    dbg.warn('No error type for ' + e);
+                }
             });
     }
 
@@ -695,11 +699,15 @@ export class ServerEngine extends Dispatcher {
 
                 let updateDH = this.db.getNow(); // TODO (1) : now "server now", or now "client read now" ?
                 // TODO (0) : for any in zone updateDH = now
+                dbg.log('now: ' + updateDH);
 
                 let actCtx: ActionReport = action.check(new ActionReport());
+                dbg.log(actCtx);
                 action.doAction(new ActionReport());
 
                 return this.db.saveZoneDao(absZone.toSaveDao());
+
+                // TODO (1) : report, souvenirs
             })
             .then((writeResults) => {
                 // TODO (1) : check write ok

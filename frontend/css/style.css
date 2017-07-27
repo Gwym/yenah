@@ -49,6 +49,10 @@ article {
     text-align: center;
 }
 
+#registration_panel {
+    visibility: hidden;
+}
+
 #captcha {
     text-align: center;
     padding: 10px;

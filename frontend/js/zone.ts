@@ -59,6 +59,8 @@ class Zone3DLoader {
 
 		if (ui.pendingScene === this) {
 			G_engine.switchToZone(this.zone3D);
+			// FIXME (1) : async render, on model onload end
+			G_engine.renderOnce();
 		}
 	}
 

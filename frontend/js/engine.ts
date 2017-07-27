@@ -1,4 +1,4 @@
-"use strict";
+
 
 // main.ts
 
@@ -51,16 +51,16 @@ function createEngine() {
 
     let eventTarget: EventTarget;
 
-   /* let canvas2D = <HTMLCanvasElement>document.getElementById('canvasUI');
-
-    if (canvas2D) {
-        ui = new CanvasUi(canvas2D);
-        eventTarget = canvas2D;
-    }
-    else {
-        ui = new HtmlUI(document.body);
-        eventTarget = document;
-    } */
+    /* let canvas2D = <HTMLCanvasElement>document.getElementById('canvasUI');
+ 
+     if (canvas2D) {
+         ui = new CanvasUi(canvas2D);
+         eventTarget = canvas2D;
+     }
+     else {
+         ui = new HtmlUI(document.body);
+         eventTarget = document;
+     } */
 
     ui = new HtmlUI(document.body);
     eventTarget = document;
@@ -327,12 +327,19 @@ class ClientEngine {
         console.log('onWindowResize ' + window.innerWidth + ' ' + window.innerHeight);
         // this.camera.aspect = window.innerWidth / window.innerHeight; // perspective only
 
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        // TODO (2) : ortho aspect this.camera.left ...
+        ui.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        let canvasSizeX = window.innerWidth;
+        let canvasSizeY = window.innerHeight;
+        this.renderer.setSize(canvasSizeX, canvasSizeY);
+
+        this.camera.left = canvasSizeX / - 2;
+        this.camera.right = canvasSizeX / 2;
+        this.camera.top = canvasSizeY / 2;
+        this.camera.bottom = canvasSizeY / - 2;
+
         this.camera.updateProjectionMatrix();
         this.renderOnce();
-
-        ui.setSize(window.innerWidth, window.innerHeight);
     }
 
     startAnimation() {

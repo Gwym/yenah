@@ -9,11 +9,15 @@ export interface EpigeneticsOptions {
 
 export class EpiGen {
 
-    genFrontEnd(opt: EpigeneticsOptions) {
-        // TODO (0) : epigen
+    genFrontend(opt: EpigeneticsOptions) {
+        // TODO (0) : gen frontend
 
 
        // refrencepath ??
+    }
+
+    checkI18N() {
+        // TODO (1) : check html structure similarity in each langage, check i18n.ts for each langage
     }
 
 }

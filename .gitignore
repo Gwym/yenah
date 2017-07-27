@@ -26,3 +26,5 @@ configuration.json
 # build
 build
 frontend/js/client.js
+frontend/js/shared.gen.ts
+

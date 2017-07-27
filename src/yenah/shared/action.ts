@@ -1,6 +1,5 @@
 import { dbg } from '../../services/logger'
-import { ActionRequest } from './messaging'
-import { Constants, ActId, FailId, EntityIdentifier, CellIdentifier, World, EntityInterface, FurnitureInterface, AgentInterface, Cell, Zone, Target } from './concept'
+import { Constants, ActId, FailId, EntityInterface, FurnitureInterface, AgentInterface, Cell, Zone, Target } from './concept'
 
 interface Costs {
     qt: number,

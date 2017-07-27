@@ -60,7 +60,7 @@ export var dbg: Logger = {
     console.error(trace(a, LoggerParts.None));
   },
   attr(s: string) {
-    // console.log(s);
+    console.log(s);
   },
   admin(s: string, parts?: LoggerParts) {
     console.log(trace(s, parts));

@@ -8,21 +8,24 @@ export var configuration: ConfigurationInterface;
 
 try {
   configuration = <ConfigurationInterface>JSON.parse(fs.readFileSync('configuration.json').toString());
+  // FIXME (0) : set default value for each missing field if not set in conf file ?
 }
 catch (e) {  // file not found, parse error, ... => set default
-  // FIXME (0) : set default if not set in conf file ?
   dbg.warn(e);
   dbg.log('no or bad configuration, using defaults');
   configuration = {
     httpIpAddress: '0.0.0.0',
     httpPort: 8080,
     fileServerPath:'./frontend',
-
-    mailServer: 'http://localhost/sendmail.php',
-    mailSecret: 'secret',
+    allowRegistration: false,
+    doSendRegistrationMail: false,
+    mailServer: '',
+    mailSecret: '',
     mongoURL: '', // mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
     mongoURLLabel: '',
-    captchaSecret: 'secret'
+    doCheckCaptcha: false,
+    captchaSecret: '',
+    doCheckInvitationCode: false
   }
 }
 

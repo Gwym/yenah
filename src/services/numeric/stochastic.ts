@@ -8,7 +8,7 @@ export class RandomizerBase {
 
 }
 
-function* genPseudoRandom(seed = 1) {
+export function* genPseudoRandom(seed = 1) {
   while (true) {
     let x = Math.sin(seed++) * 10000;
     yield x - Math.floor(x);
@@ -17,7 +17,7 @@ function* genPseudoRandom(seed = 1) {
 
 // https://en.wikipedia.org/wiki/Marsaglia_polar_method
 
-function* genGaussian(mean: number, stdDev: number, randomizer: () => number = Math.random) {
+export function* genGaussian(mean: number, stdDev: number, randomizer: () => number = Math.random) {
   let spare: number | undefined
 
   while (true) {
@@ -36,10 +36,6 @@ function* genGaussian(mean: number, stdDev: number, randomizer: () => number = M
       yield mean + stdDev * u * mul;
     }
   }
-}
-
-async function testAsync(p: Promise<any>) {
-  let r = await p;
 }
 
 export class PseudoRandomiser {

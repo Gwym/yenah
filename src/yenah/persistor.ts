@@ -1,14 +1,13 @@
 
 import {
-    ItemIdentifier, UserItemIdentifier, AgentItemIdentifier, IndirectionItemIdentifier, EntityIdentifier, TransientIdentifier, 
-    RelZoneDao, EntityOptions, AgentOptions, CellDao, EntityVarOptions,
-    World, CollectionId, PilotableAbsIdDao, SpaceRef
+    ItemIdentifier, UserItemIdentifier, AgentItemIdentifier, IndirectionItemIdentifier, EntityIdentifier, EntityOptions, AgentOptions, CellDao, EntityVarOptions,
+    CollectionId, PilotableAbsIdDao, SpaceRef
 } from './shared/concept';
-import { AbsEntityIdentifier, AbsZone, ZoneAbsDao, AgentIdAbsDao, PilotedRelToAbsDictionary, YeanhUserSession } from './engine'
+import { AbsEntityIdentifier, AbsZone, PilotedRelToAbsDictionary, YeanhUserSession } from './engine'
 
 import { UpdateWriteOpResult, InsertWriteOpResult, BulkWriteResult } from 'mongodb'; // TODO (5) : generic result
 import { XLoginRequest, XRegistrationRequest, UserSessionAck } from '../services/shared/messaging'
-import { ActionRequest, PilotRequest, QueryFilter, AdminInformations } from './shared/messaging'
+import { QueryFilter } from './shared/messaging'
 import { UserAsyncManager } from "../services/dispatcher";
 
 export interface IndirectionSaveDao /* ~ extends AbsIdentifier */ {

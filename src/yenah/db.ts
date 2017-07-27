@@ -2,35 +2,29 @@
 import * as Mongo from 'mongodb';
 import * as bcrypt from 'bcrypt';
 
-import * as wsWebSocket from 'ws'; // rename, conflict between javascript WebSocket and ws lib
-
 import { dbg } from '../services/logger'
 import {
-    Constants, Defaults, CollectionId,
-    AgentItemIdentifier, FurnitureItemIdentifier, IndirectionItemIdentifier, TransientIdentifier, UserItemIdentifier,
-    World, CellType,
-    EntityOptions, AgentOptions, CellDao, RelZoneDao, SpaceRef,
-    Target, PositionGauge, PilotableAbsIdDao, AgentIdentifier
+    CollectionId,
+    AgentItemIdentifier, IndirectionItemIdentifier, UserItemIdentifier,
+    EntityOptions, AgentOptions, CellDao, SpaceRef,
+    PositionGauge, PilotableAbsIdDao
 } from './shared/concept'
 import {
-    ZoneRequest, PilotRequest, QueryFilter, AdminInformations
+    QueryFilter, AdminInformations
 } from './shared/messaging'
 import {
-    AbsEntityIdentifier, TransactionManager, AbsZone, AbsAgent, AbsFurniture,
-    ZoneAbsDao, FurnitureIdAbsDao, AgentIdAbsDao,
+    AbsEntityIdentifier, TransactionManager, AbsZone, ZoneAbsDao, FurnitureIdAbsDao, AgentIdAbsDao,
     PilotedRelToAbsDictionary, AbsAgentIdentifier, YeanhUserSession
 } from './engine'
 import {
     AsyncPersistor, UserDao, UpdateResult, InsertResult, InsertZoneDao,
-    SaveZoneDao, SaveByIdDao, SavePosDao, SaveByIdFullDao, SaveByIdVarDao, IndirectionSaveDao,
-    IndirectionDictionary, IndirectionIdDao
+    SaveZoneDao, SaveByIdDao, SavePosDao, IndirectionSaveDao,
+    IndirectionIdDao
 } from './persistor'
 import { MessageType, XLoginRequest, ErrMsg, XRegistrationRequest, UserSessionAck, UserOptions } from "../services/shared/messaging";
 
-type HexIdentifier = string // Mongo.ObjectID.toHexString
-
-// not used (sync db.ts with concept.ts changes, to remember to change query if pos changes in concept)
-interface _MongoPositionQuery extends PositionGauge {
+// not used (aim is to sync db.ts with concept.ts changes, to remember to change MongoPositionQuery if PositionGauge changes in concept)
+export interface _MongoPositionQuery extends PositionGauge {
     posX: { $gte: number, $lte: number },
     posY: { $gte: number, $lte: number }
 }
@@ -38,25 +32,6 @@ interface _MongoPositionQuery extends PositionGauge {
 interface MongoPositionQuery {
     "varAttr.posX": { $gte: number, $lte: number }
     "varAttr.posY": { $gte: number, $lte: number }
-}
-
-interface FurnitureUpsertDao extends EntityOptions /* FurnitureDaoWrite */ {
-
-    _id: string // Mongo.ObjectID | string
-}
-
-// TODO (1) : fake Mongo.ObjectId.fromPosition(x,y) ?
-/*interface CellDao {
-    _id: Mongo.ObjectID
-    cellId: CellId    // terrain id
-    posX: number
-    posY: number
-} */
-
-interface AgentDaoPosition {
-    _id: Mongo.ObjectID
-    posX: number
-    posY: number
 }
 
 export interface MongoPilotableDao extends PilotableAbsIdDao {
@@ -71,112 +46,9 @@ interface MongoFurnitureIdDao extends EntityOptions {
     _id: Mongo.ObjectID
 }
 
-interface MongoIndirectionIdLookupDao extends IndirectionSaveDao {
-    _id: Mongo.ObjectID
-    actor: MongoAgentIdDao
-}
-
 interface MongoIndirectionIdDao extends IndirectionSaveDao {
     _id: Mongo.ObjectID
 }
-
-
-// TODO (0) : check projections validity toward Dao's
-
-var Projections = {
-    AgentDaoAsPilotable: { // interface AgentGistAsPilotable
-        _id: true,
-        entType: true,
-        posX: true,
-        posY: true,
-        name: true
-    },
-    AgentDaoPosition: { // TODO (1) : a virer (utiliser actor complet) ou SpaceRef ?
-        _id: true,
-        posX: true,
-        posY: true
-    },
-    AgentDaoFull: {
-        _id: true,
-        entType: true,
-        posX: true,
-        posY: true,
-        name: true,
-        condMax: true,
-        condSlope: true,
-        cond: true,
-        condDH: true,
-        qtMax: true,
-        qt: true,
-        qtSlope: true,
-        qtDH: true,
-        energyMax: true,
-        energy: true,
-        energySlope: true,
-        energyDH: true,
-        moveWater: true,
-        moveEarth: true,
-        moveAir: true
-    },
-    /*  toActor: function (actorDao: AgentGist): AbsAgent {
-          return ServerEngine.AbsAgentFactory(actorDao);
-      },
-      toAgentGist: function (actor: AbsAgent, source: AgentDaoFull[], destination: AgentGist[]) {
-          for (let agentDao of source) {
-              let agentGist: AgentGist = {
-                  _id: agentDao._id.toHexString(), // TODO (0) : getIndirection() { wsUser.indirection_sc[agentDao._id] = iid; wsUser.indirection_cs[iid] = agentDao._id; }
-                  entType: agentDao.entType,
-                  posX: actor.posX - agentDao.posX,
-                  posY: actor.posY - agentDao.posY,
-                  name: agentDao.name,
-                  condMax: agentDao.condMax,
-                  condSlope: agentDao.condSlope,
-                  cond: agentDao.cond,
-                  condDH: agentDao.condDH,
-                  qtMax: agentDao.qtMax,
-                  qt: agentDao.qt,
-                  qtSlope: agentDao.qtSlope,
-                  qtDH: agentDao.qtDH,
-                  energyMax: agentDao.energyMax,
-                  energy: agentDao.energy,
-                  energySlope: agentDao.energySlope,
-                  energyDH: agentDao.energyDH,
-                  moveWater: agentDao.moveWater,
-                  moveEarth: agentDao.moveEarth,
-                  moveAir: agentDao.moveAir
-  
-              };
-              destination.push(agentGist);
-          }
-      },
-      toFurnitureGist: function (actor: AbsAgent, source: FurnitureDao[], destination: EntityGist[]) {
-          for (let furnitureDao of source) {
-              let furnitureGist: FurnitureGist = {
-                  _id: furnitureDao._id.toHexString(), // TODO (0) : getIndirection() { wsUser.indirection_sc[agentDao._id] = iid; wsUser.indirection_cs[iid] = agentDao._id; }
-                  entType: furnitureDao.entType,
-                  posX: actor.posX - furnitureDao.posX,
-                  posY: actor.posY - furnitureDao.posY,
-                  condMax: furnitureDao.condMax,
-                  condSlope: furnitureDao.condSlope,
-                  cond: furnitureDao.cond,
-                  condDH: furnitureDao.condDH,
-  
-              }
-              destination.push(furnitureGist);
-          }
-      },
-      toCellGist: function (actor: AbsAgent, source: CellDao[], destination: CellGist[]) {
-          for (let cellDao of source) {
-              let cellGist: CellGist = {
-                  cellId: cellDao.cellId,
-                  posX: actor.posX - cellDao.posX,
-                  posY: actor.posY - cellDao.posY
-              }
-              destination.push(cellGist);
-          }
-      } */
-}
-
 
 export class MongoPersistor extends AsyncPersistor {
 
@@ -238,7 +110,7 @@ export class MongoPersistor extends AsyncPersistor {
 
     transactionStart(): Promise<TransactionManager> {
 
-        return new Promise<TransactionManager>((resolve, reject) => {
+        return new Promise<TransactionManager>((resolve) => {
             resolve(); // TODO (1) if pending transaction, reject or queue ?
         });
     }
@@ -329,8 +201,14 @@ export class MongoPersistor extends AsyncPersistor {
 
         return new Promise<UserSessionAck>((resolve, reject) => {
 
-            // TODO (0) : hash birthdate
+            // TODO (1) : hash birthdate
             bcrypt.hash(userReg.password, 4, (err, hash) => { // TODO (1) : saltRound, err
+
+                if (err) {
+                    dbg.error(err);
+                    reject(err);
+                    return;
+                }
 
                 interface UserPrivateDocument extends UserOptions {
                     mail: string,
@@ -342,22 +220,36 @@ export class MongoPersistor extends AsyncPersistor {
                     hash: hash
                 }
 
+                // TODO (1) : check invitation code, reject(ErrMsg.InvalidCode);
                 //  this.users.findOneAndReplace({ invitationCode: userReg.code }, { mail: userReg.mail }, (err, res) => {
-                // TODO (0) : check name unicity and remove index ?
-                this.users.insert(userDocument, (err, res) => {
+
+                this.users.insertOne(userDocument, (err: Mongo.WriteError, res) => {
                     if (err === null && res.result.ok && res.insertedCount === 1) {
-                        console.log('createUser > OK ' + userDocument);
+                        dbg.log('createUser > OK ' + userDocument);
                         let userAck: UserSessionAck = { type: MessageType.User, userOptions: { name: userDocument.name } };
                         resolve(userAck);
                     }
                     else {
-                        console.log(err);
-                        console.error('createUser > err:' + err + ' userDoc:' + userDocument); // TODO (2) : filter db error, user duplicate, invalid code
-                        // parseError 
-                        // TODO (0))) : { WriteError({"code":11000,"index":0,"errmsg":"E11000 duplicate key error collection: yenah.users index: name_1 dup key: { : \"test\" }","op":{"name":"test","mail":"test@test.fr","hash":"$2a$04$rgeUX7eSraGrtaW7S1Lp0O/0XR9Wya0K5.vuv.kFlIsJGoGcz0DMm","_id":"59589321bed74e09da709bcc"}})
-                        reject(ErrMsg.DuplicateName);
+                        dbg.log(err);
 
-                        //reject(ErrMsg.InvalidCode);
+                        // https://docs.mongodb.com/manual/reference/method/db.collection.insertOne/
+                        // example : { WriteError({"code":11000,"index":0,"errmsg":"E11000 duplicate key error collection: yenah.users index: name_1 dup key: { : \"test\" }","op":{"name":"test","mail":"test@test.fr","hash":"$2a$04$rgeUX7eSraGrtaW7S1Lp0O/0XR9Wya0K5.vuv.kFlIsJGoGcz0DMm","_id":"59589321bed74e09da709bcc"}})
+                        if (err.code === 11000) {
+                            
+                            if (err.errmsg.indexOf('index: name') !== -1) {
+                                reject(ErrMsg.DuplicateName);
+                                return;
+                            }
+                            else if (err.errmsg.indexOf('index: mail') !== -1) {
+                                reject(ErrMsg.DuplicateMail);
+                                return;
+                            }
+                            
+                        }
+
+                        dbg.error(err); 
+
+                        reject(ErrMsg.DatabaseError);
                     }
                 })
 
@@ -497,45 +389,7 @@ export class MongoPersistor extends AsyncPersistor {
         })
     }
 
-    /*  getPilotedRelListLookup(userAbsIId: ItemIdentifier): Promise<PilotedRelToAbsDictionary> {
-  
-          return new Promise<PilotedRelToAbsDictionary>((resolve, reject) => {
-  
-              this.indirections.aggregate([
-                  { $match: { uId: userAbsIId, piloted: true } },
-                  {
-                      $lookup: {
-                          from: 'agents',
-                          localField: 'tIId',
-                          foreignField: '_id',
-                          as: 'actor'
-                      }
-                  }
-              ]).toArray(function (err, indirections: MongoIndirectionIdLookupDao[]) {
-  
-                  if (err !== null || !indirections) {
-                      dbg.error(err);
-                      dbg.error(indirections);
-                      reject(<s2c_ChannelMessage>{ type: MessageType.Error, toStringId: ToStringId.ServerError });
-                  } else {
-  
-                      let piloted: AgentIdAbsDao[] = []; // TODO (1) : PilotedRelToAbsDictionary
-  
-                      // Convert MongoIndirectionIdLookupDao.MongoAgentIdDao to AgentAbsIdDao (_id => iId)
-                      for (let indirection of indirections) {
-                          (<AgentIdAbsDao><any>indirection.actor).iId = {
-                              cId: CollectionId.Agent,
-                              iId: indirection._id.toHexString()
-                          }
-                          delete indirection.actor._id;
-                          piloted.push(<AgentIdAbsDao><any>indirection.actor);
-                      }
-  
-                      resolve(piloted);
-                  }
-              });
-          });
-      } */
+     
 
     // TODO (2) : filter argument to select some piloted or groups (see getPilotedGroups)
     // getPiloted always need indirection, so we use indirections.piloted and not agents.pilot_id
@@ -599,8 +453,6 @@ export class MongoPersistor extends AsyncPersistor {
 
     setPilot(userAbsIId: UserItemIdentifier, setPilotAbsList: AgentItemIdentifier[]): Promise<Mongo.BulkWriteResult> {
 
-        let pilot_id = Mongo.ObjectID.createFromHexString(userAbsIId.toString());
-
         //  let agentIdList: Mongo.ObjectID[] = [];
         let actorList: IndirectionSaveDao[] = [];
         let indirection: IndirectionSaveDao;
@@ -619,7 +471,7 @@ export class MongoPersistor extends AsyncPersistor {
             actorList.push(indirection);
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.memoriseIndirections(actorList)
                 .then((bulkResult) => {
                     // set pilot_id in agents, to simplify getPilotable
@@ -707,7 +559,7 @@ export class MongoPersistor extends AsyncPersistor {
 
         dbg.log('actorIid:' + actorIid + ' query : ' + JSON.stringify(query));
 
-        return new Promise<SpaceRef>((resolve, reject) => {
+        return new Promise<SpaceRef>((resolve) => {
 
             this.agents.findOne(query, { fields: { 'varAttr.posX': true, 'varAttr.posY': true } })
                 .then((mongoActorPosition) => {

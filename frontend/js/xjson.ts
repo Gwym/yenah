@@ -1,4 +1,4 @@
-"use strict";
+
 
 function setUserSession(authId: string | false) {
 
@@ -58,6 +58,21 @@ interface Recaptcha {
 declare var grecaptcha: Recaptcha;
 var widgetCaptcha: captchaWidget;
 
+var loadCaptachaScript = function (src: string) {
+  console.log('loading captcha script');
+  let captchaScript = document.createElement('script');
+  captchaScript.type = 'text/javascript';
+  captchaScript.src = src;
+  captchaScript.onload = function () {
+    console.log('load captcha ok');
+  };
+  let container = document.getElementsByTagName('script')[0];
+  if (container.parentNode) {
+    container.parentNode.insertBefore(captchaScript, container);
+  }
+  else { console.error('no parentNode') }
+}
+
 var captchaCallback = function (response: string) {
   console.log(response);
   var btn = <HTMLButtonElement>(document.getElementById('signin_button'));
@@ -74,7 +89,7 @@ var onloadCallback = function () {
 // XUserSessionAck ~ XRegistrationAck, XLoginAck, XCheckSessionAck, XCloseSessionAck
 var XUserSessionAck: (this: XMLHttpRequest, ev: Event) => any = function (this: XMLHttpRequest, ev: Event): any {
 
-  console.log('XUserSessionAck >' );
+  console.log('XUserSessionAck >');
   console.log(this.responseText);
 
   let response: UserSessionAck | ErrorMessage;
@@ -89,19 +104,19 @@ var XUserSessionAck: (this: XMLHttpRequest, ev: Event) => any = function (this: 
 
   if (response && response.type === MessageType.User && response.userOptions.name) { // UserSessionAck
 
-    
-      if (response.closed) {
-        setUserSession(false);
+
+    if (response.closed) {
+      setUserSession(false);
+    }
+    else {
+      if (response.sessionId !== undefined) {
+        setUserSession(response.sessionId);
       }
-      else {
-        if (response.sessionId !== undefined) {
-          setUserSession(response.sessionId);
-        }
-      }
+    }
 
     XClearError();
     XShowSuccess(response.userOptions.name);
-    return; 
+    return;
   }
 
   console.info('XUserSessionAck > Error, reset session');
@@ -110,6 +125,10 @@ var XUserSessionAck: (this: XMLHttpRequest, ev: Event) => any = function (this: 
 }
 
 var XSubmitRegistration = function (form: HTMLFormElement) {
+
+  // TODO (0) : enable/disable captcha, password and code from server configuration
+  // TODO (0) : enable/disable password/mail from server configuration
+  // TODO (0) : enable/disable invitation code from server configuration
 
   // let cResponse = grecaptcha.getResponse(widgetCaptcha);
   let cResponse = 'test';
@@ -127,6 +146,7 @@ var XSubmitRegistration = function (form: HTMLFormElement) {
      (<HTMLFormElement>document.getElementById('login_form')).style.visibility = 'visible'; */
   }
 
+  let invitationCode: HTMLInputElement = <HTMLInputElement>document.getElementById('input_invitation_code');
   let nameInput: HTMLInputElement = <HTMLInputElement>document.getElementById('input_name');
   let mailInput: HTMLInputElement = <HTMLInputElement>document.getElementById('input_mail');
   let passwordInput: HTMLInputElement = <HTMLInputElement>document.getElementById('input_password');
@@ -138,10 +158,11 @@ var XSubmitRegistration = function (form: HTMLFormElement) {
     mail: mailInput.value,
     password: passwordInput.value,
     date: dateInput.valueAsDate,
-    response: cResponse
+    captchaResponse: cResponse,
+    invitationCode: invitationCode.value
   };
 
-  xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+  xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
   xReq.send();
 }
 
@@ -166,10 +187,12 @@ var XSubmitLogin = function (form: HTMLFormElement) {
     password: passwordInput.value,
   };
 
-  xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+  xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
   xReq.send();
 }
 
+// index.html onload 
+// TODO (0) CORS
 var XCheckSession = function (form: HTMLFormElement) {
 
   let sessionId = getUserSessionId();
@@ -194,7 +217,7 @@ var XCheckSession = function (form: HTMLFormElement) {
       doClose: false
     };
 
-    xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+    xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
     xReq.send();
   }
 }
@@ -229,7 +252,7 @@ var XCloseSession = function () {
 
   let sessionId = getUserSessionId();
 
-  console.log('XCloseSession > sessionId: ' + sessionId );
+  console.log('XCloseSession > sessionId: ' + sessionId);
 
   if (sessionId) {
 
@@ -249,9 +272,100 @@ var XCloseSession = function () {
       doClose: true
     };
 
-    xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+    xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
     xReq.send();
   }
 }
+
+// TODO (2) : split client.js by files (registration specific js) 
+// FIXME (1) : initial configuration of hidden /visible elements is in style.css => set dynamically ?
+
+// registration.html onload
+// TODO (0) CORS
+var xConfigureRegistration = function (form: HTMLFormElement) {
+
+  let sessionId = getUserSessionId();
+
+  if (sessionId) {
+    console.log('already registred');
+  }
+  else {
+
+    console.log('getting registration configuration');
+
+    XClearError();
+
+    (<HTMLElement>document.getElementById('registration_panel')).style.visibility = 'hidden';
+    (<HTMLElement>document.getElementById('unallowed_display')).style.visibility = 'visible';
+
+    let xReq = new XMLHttpRequest();
+    xReq.onload = xConfigureRegistrationAck;
+    xReq.onerror = function (e) {
+      console.error(e);
+      XShowError(e.message);
+    }
+
+    let data: XConfigureRegistrationRequest = {
+      type: MessageType.ConfigureRegistration
+    };
+
+    xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
+    xReq.send(); 
+  } 
+}
+
+
+var xConfigureRegistrationAck: (this: XMLHttpRequest, ev: Event) => any = function (this: XMLHttpRequest, ev: Event): any {
+
+  console.log('xConfigureRegistrationAck >');
+  console.log(this.responseText);
+
+  let response: XConfigureRegistrationAck | ErrorMessage;
+
+  try {
+    response = JSON.parse(this.responseText);
+  }
+  catch (e) {
+    console.error('Parsing error in' + this.responseText);
+    response = { type: MessageType.Error, toStringId: ToStringId.ServerError }
+  }
+
+  if (response && response.type === MessageType.ConfigureRegistration) {
+
+    XClearError();
+
+    if (response.allowRegistration) {
+
+      (<HTMLElement>document.getElementById('registration_panel')).style.visibility = 'visible'; 
+      (<HTMLElement>document.getElementById('unallowed_display')).style.visibility = 'hidden';
+
+      // FIXME (0) : set/unset required ?
+      (<HTMLElement>document.getElementById('input_invitation_code')).style.visibility = response.doCheckInvitationCode ? 'visible' : 'hidden';
+      (<HTMLElement>document.getElementById('password_panel')).style.visibility = response.doSendRegistrationMail ? 'hidden' : ''; // inherited
+
+      if (response.doCheckCaptcha) {
+        // TODO (1) : configuration response.captchaUrl ? or other vendors ?
+        // <script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script> 
+        let captchaUrl = "https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit";
+        loadCaptachaScript(captchaUrl);
+        let captchaScriptLoader = document.createElement('script');
+      }
+    }
+    else {
+      (<HTMLElement>document.getElementById('registration_panel')).style.visibility = 'hidden';
+      (<HTMLElement>document.getElementById('unallowed_display')).style.visibility = 'visible';
+    }
+    return;
+  }
+  else {
+    if (!response || response && response.type !== MessageType.Error) {
+      response = { type: MessageType.Error, toStringId: ToStringId.ServerError }
+    }
+  }
+
+  console.info('xConfigureRegistrationAck > Error ' + response);
+  XShowError(i18n.x_messages[(<ErrorMessage>response).toStringId]);
+}
+
 
 

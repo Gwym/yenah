@@ -284,12 +284,6 @@ const Defaults = {
     MOVE_AIR: 0,
     VEGETATION: 0
 };
-function setUniversalTimestep(invSlope) {
-    dbg.log('setUniversalTimestep ' + invSlope);
-    Defaults.QT_SLOPE = invSlope;
-    Defaults.ENERGY_SLOPE = invSlope;
-    Defaults.BEING_COND_SLOPE = invSlope;
-}
 class GenericIdentifier {
 }
 class CellIdentifier extends GenericIdentifier {
@@ -483,7 +477,7 @@ class EntityBase {
     getWeight() {
         return this.mass;
     }
-    canContain(entity) {
+    canContain(_entity) {
         return false;
     }
     getD2A(originX = 0, originY = 0) {
@@ -629,7 +623,8 @@ class Agent extends EntityBase {
         this.modEnergySlope = this._energySlope;
         super.applyModifiers();
     }
-    canReceive(furniture) {
+    canReceive(_furniture) {
+        return false;
     }
     asRelativeEntity(observer, relId) {
         super.asRelativeEntity(observer, relId);
@@ -685,10 +680,10 @@ class Cell {
         }
         return true;
     }
-    getMoveCostT(a) {
+    getMoveCostT(_a) {
         return Number.POSITIVE_INFINITY;
     }
-    getMoveCostE(a) {
+    getMoveCostE(_a) {
         return Number.POSITIVE_INFINITY;
     }
     getEatCostT() {
@@ -920,14 +915,15 @@ var MessageType;
 (function (MessageType) {
     MessageType[MessageType["Error"] = 0] = "Error";
     MessageType[MessageType["Registration"] = 1] = "Registration";
-    MessageType[MessageType["Login"] = 2] = "Login";
-    MessageType[MessageType["SessionCheck"] = 3] = "SessionCheck";
-    MessageType[MessageType["User"] = 4] = "User";
-    MessageType[MessageType["ReqPilot"] = 5] = "ReqPilot";
-    MessageType[MessageType["SetPilot"] = 6] = "SetPilot";
-    MessageType[MessageType["Zone"] = 7] = "Zone";
-    MessageType[MessageType["Action"] = 8] = "Action";
-    MessageType[MessageType["Admin"] = 9] = "Admin";
+    MessageType[MessageType["ConfigureRegistration"] = 2] = "ConfigureRegistration";
+    MessageType[MessageType["Login"] = 3] = "Login";
+    MessageType[MessageType["SessionCheck"] = 4] = "SessionCheck";
+    MessageType[MessageType["User"] = 5] = "User";
+    MessageType[MessageType["ReqPilot"] = 6] = "ReqPilot";
+    MessageType[MessageType["SetPilot"] = 7] = "SetPilot";
+    MessageType[MessageType["Zone"] = 8] = "Zone";
+    MessageType[MessageType["Action"] = 9] = "Action";
+    MessageType[MessageType["Admin"] = 10] = "Admin";
 })(MessageType || (MessageType = {}));
 var ToStringId;
 (function (ToStringId) {
@@ -940,6 +936,7 @@ var ToStringId;
     ToStringId[ToStringId["InvalidCode"] = 6] = "InvalidCode";
     ToStringId[ToStringId["InvalidMail"] = 7] = "InvalidMail";
     ToStringId[ToStringId["DuplicateName"] = 8] = "DuplicateName";
+    ToStringId[ToStringId["DuplicateMail"] = 9] = "DuplicateMail";
 })(ToStringId || (ToStringId = {}));
 const ErrMsg = {
     UnkownCommand: { type: MessageType.Error, toStringId: ToStringId.UnkownCommand },
@@ -950,7 +947,8 @@ const ErrMsg = {
     InvalidCaptcha: { type: MessageType.Error, toStringId: ToStringId.InvalidCaptcha },
     InvalidCode: { type: MessageType.Error, toStringId: ToStringId.InvalidCode },
     InvalidMail: { type: MessageType.Error, toStringId: ToStringId.InvalidMail },
-    DuplicateName: { type: MessageType.Error, toStringId: ToStringId.DuplicateName }
+    DuplicateName: { type: MessageType.Error, toStringId: ToStringId.DuplicateName },
+    DuplicateMail: { type: MessageType.Error, toStringId: ToStringId.DuplicateMail }
 };
 var AdminActId;
 (function (AdminActId) {
@@ -1148,7 +1146,7 @@ var i18n_en = {
     websocket_connected: 'Websocket connected',
     websocket_disconnected: 'Websocket disconnected',
     limited_1_connexion: 'Vous êtes limité a une connexion WebSocket',
-    x_messages: ['Unkown command', 'Server error', 'Database error', 'Session expired', 'Login error', 'Invalid captcha', 'Invalid code', 'Invalid mail', 'Name not available'],
+    x_messages: ['Unkown command', 'Server error', 'Database error', 'Session expired', 'Login error', 'Invalid captcha', 'Invalid code', 'Invalid mail', 'Name not available', 'Mail not available'],
     piloted_availables: spfm('{0} available creature(s)'),
     piloted_no_available: 'No incarnated creature',
     pilotable_availables: spfm('{0} available creature(s)'),
@@ -1321,7 +1319,7 @@ var i18n_fr = {
     websocket_connected: 'Websocket connecté',
     websocket_disconnected: 'Websocket déconnecté',
     limited_1_connexion: 'Vous êtes limité a une connexion WebSocket',
-    x_messages: ['Commande inconnue', 'Erreur serveur', 'Erreur base de donnée', 'Session expirée', "Erreur d'identification", 'Captcha invalide', 'Code invalide', 'Email invalide', 'Nom indisponible'],
+    x_messages: ['Commande inconnue', 'Erreur serveur', 'Erreur base de donnée', 'Session expirée', "Erreur d'identification", 'Captcha invalide', 'Code invalide', 'Email invalide', 'Nom indisponible', 'E-mail indisponible'],
     piloted_availables: spfm('Vous possédez {0} créature(s)'),
     piloted_no_available: 'Choisissez les créatures à incarner',
     pilotable_availables: spfm('{0} créature(s) disponible(s)'),
@@ -2492,6 +2490,7 @@ class Zone3DLoader {
         this.zone3D = new Zone3D(zone);
         if (ui.pendingScene === this) {
             G_engine.switchToZone(this.zone3D);
+            G_engine.renderOnce();
         }
     }
 }
@@ -2942,10 +2941,17 @@ class ClientEngine {
     }
     onWindowResize() {
         console.log('onWindowResize ' + window.innerWidth + ' ' + window.innerHeight);
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        ui.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        let canvasSizeX = window.innerWidth;
+        let canvasSizeY = window.innerHeight;
+        this.renderer.setSize(canvasSizeX, canvasSizeY);
+        this.camera.left = canvasSizeX / -2;
+        this.camera.right = canvasSizeX / 2;
+        this.camera.top = canvasSizeY / 2;
+        this.camera.bottom = canvasSizeY / -2;
         this.camera.updateProjectionMatrix();
         this.renderOnce();
-        ui.setSize(window.innerWidth, window.innerHeight);
     }
     startAnimation() {
         if (this.requestAnimationId) {
@@ -3113,6 +3119,22 @@ function redirect(href, reason, confirmRedirection = false) {
     }
 }
 var widgetCaptcha;
+var loadCaptachaScript = function (src) {
+    console.log('loading captcha script');
+    let captchaScript = document.createElement('script');
+    captchaScript.type = 'text/javascript';
+    captchaScript.src = src;
+    captchaScript.onload = function () {
+        console.log('load captcha ok');
+    };
+    let container = document.getElementsByTagName('script')[0];
+    if (container.parentNode) {
+        container.parentNode.insertBefore(captchaScript, container);
+    }
+    else {
+        console.error('no parentNode');
+    }
+};
 var captchaCallback = function (response) {
     console.log(response);
     var btn = (document.getElementById('signin_button'));
@@ -3162,6 +3184,7 @@ var XSubmitRegistration = function (form) {
         console.error(e);
         XShowError(e.message);
     };
+    let invitationCode = document.getElementById('input_invitation_code');
     let nameInput = document.getElementById('input_name');
     let mailInput = document.getElementById('input_mail');
     let passwordInput = document.getElementById('input_password');
@@ -3172,9 +3195,10 @@ var XSubmitRegistration = function (form) {
         mail: mailInput.value,
         password: passwordInput.value,
         date: dateInput.valueAsDate,
-        response: cResponse
+        captchaResponse: cResponse,
+        invitationCode: invitationCode.value
     };
-    xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+    xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
     xReq.send();
 };
 var XSubmitLogin = function (form) {
@@ -3193,7 +3217,7 @@ var XSubmitLogin = function (form) {
         login: loginInput.value,
         password: passwordInput.value,
     };
-    xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+    xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
     xReq.send();
 };
 var XCheckSession = function (form) {
@@ -3213,7 +3237,7 @@ var XCheckSession = function (form) {
             sessionId: sessionId,
             doClose: false
         };
-        xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+        xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
         xReq.send();
     }
 };
@@ -3257,9 +3281,70 @@ var XCloseSession = function () {
             sessionId: sessionId,
             doClose: true
         };
-        xReq.open("get", '/req?json=' + encodeURIComponent(JSON.stringify(data)), true);
+        xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
         xReq.send();
     }
+};
+var xConfigureRegistration = function (form) {
+    let sessionId = getUserSessionId();
+    if (sessionId) {
+        console.log('already registred');
+    }
+    else {
+        console.log('getting registration configuration');
+        XClearError();
+        document.getElementById('registration_panel').style.visibility = 'hidden';
+        document.getElementById('unallowed_display').style.visibility = 'visible';
+        let xReq = new XMLHttpRequest();
+        xReq.onload = xConfigureRegistrationAck;
+        xReq.onerror = function (e) {
+            console.error(e);
+            XShowError(e.message);
+        };
+        let data = {
+            type: MessageType.ConfigureRegistration
+        };
+        xReq.open("get", XJsonUrl + encodeURIComponent(JSON.stringify(data)), true);
+        xReq.send();
+    }
+};
+var xConfigureRegistrationAck = function (ev) {
+    console.log('xConfigureRegistrationAck >');
+    console.log(this.responseText);
+    let response;
+    try {
+        response = JSON.parse(this.responseText);
+    }
+    catch (e) {
+        console.error('Parsing error in' + this.responseText);
+        response = { type: MessageType.Error, toStringId: ToStringId.ServerError };
+    }
+    if (response && response.type === MessageType.ConfigureRegistration) {
+        XClearError();
+        if (response.allowRegistration) {
+            document.getElementById('registration_panel').style.visibility = 'visible';
+            document.getElementById('unallowed_display').style.visibility = 'hidden';
+            document.getElementById('input_invitation_code').style.visibility = response.doCheckInvitationCode ? 'visible' : 'hidden';
+            document.getElementById('password_panel').style.visibility = response.doSendRegistrationMail ? 'hidden' : '';
+            if (response.doCheckCaptcha) {
+                let captchaUrl = "https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit";
+                loadCaptachaScript(captchaUrl);
+                let captchaScriptLoader = document.createElement('script');
+            }
+        }
+        else {
+            document.getElementById('registration_panel').style.visibility = 'hidden';
+            document.getElementById('unallowed_display').style.visibility = 'visible';
+        }
+        return;
+    }
+    else {
+        if (!response || response && response.type !== MessageType.Error) {
+            response = { type: MessageType.Error, toStringId: ToStringId.ServerError };
+        }
+    }
+    console.info('xConfigureRegistrationAck > Error ' + response);
+    XShowError(i18n.x_messages[response.toStringId]);
 };
 function adminMode() {
     ui = new AdminUI(document.body);

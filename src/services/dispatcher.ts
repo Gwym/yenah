@@ -5,14 +5,14 @@ import * as wsWebSocket from 'ws'; // rename, take care not to confuse between j
 import * as querystring from 'querystring';
 
 import { dbg, LoggerParts } from './logger'
+import { configuration } from '../configuration'
 import { StaticServer, StaticServerOptions } from './staticserver';
 import {
   websocketProtocolVersion, XJsonUrl, MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage,
-  UserOptions, UserSessionAck, XRegistrationRequest, XLoginRequest, ErrorMessage, ErrMsg, SessionCheckRequest
+  UserOptions, UserSessionAck, XRegistrationRequest, XLoginRequest, ErrorMessage, ErrMsg, SessionCheckRequest, XConfigureRegistrationAck
 } from './shared/messaging'
 import { AsyncPersistor } from "../yenah/persistor"; // TODO (1) : epigen service
 
-// shared client/server configuration interface
 export interface ConfigurationInterface {
   httpPort: number,
   httpIpAddress?: string,
@@ -20,9 +20,13 @@ export interface ConfigurationInterface {
   fileServerOptions?: StaticServerOptions
   mongoURL: string,
   mongoURLLabel: string,
+  allowRegistration: boolean
+  doSendRegistrationMail: boolean,
   mailServer: string,
   mailSecret: string,
-  captchaSecret: string
+  doCheckCaptcha: boolean,
+  captchaSecret: string,
+  doCheckInvitationCode: boolean
 }
 
 export enum HttpStatusCode { Ok = 200, BadRequest = 400, Forbidden = 403, NotFound = 404, MethodNotAllowed = 405, PayloadTooLarge = 413, InternalServerError = 500 }
@@ -152,8 +156,6 @@ export abstract class Dispatcher implements UserSessionSyncManager {
          dbg.error(e);
        } */
 
-      let jsonString = '';
-
       if (req.method === 'GET') {
         (req.on('end', () => {
 
@@ -176,7 +178,7 @@ export abstract class Dispatcher implements UserSessionSyncManager {
             else if (req.url.indexOf('/db') === 0) {
               dbg.log(req.headers);
               try {
-                let col = db.insertTrack({ date: Date.now(), req: req.headers });
+                db.insertTrack({ date: Date.now(), req: req.headers });
               }
               catch (e) {
                 dbg.error(e);
@@ -248,7 +250,7 @@ export abstract class Dispatcher implements UserSessionSyncManager {
         dbg.log('WS > listen callback ');
       });
 
-    let ws_connection_counter = 0; // TODO (2) : nodeObserver
+    // TODO (2) : nodeObserver
 
     wss.on('connection', (ws) => {
 
@@ -428,6 +430,8 @@ export abstract class Dispatcher implements UserSessionSyncManager {
     }
   }
 
+
+  // TODO (0) : replace callbacks by promises in all commands
   dispatchXCommand(jsonString: string, callback: (ack: s2c_ChannelMessage) => void): void {
 
     var cmd: c2s_ChannelMessage;
@@ -446,8 +450,25 @@ export abstract class Dispatcher implements UserSessionSyncManager {
       }
       else if (cmd.type === MessageType.Registration) {
 
-        let seq = new RegistrationSequence(this.db, this.captchaSecret);
-        seq.registration(<XRegistrationRequest>cmd, callback);
+        if (configuration.allowRegistration) {
+          let seq = new RegistrationSequence(this.db, this.captchaSecret);
+          seq.registration(<XRegistrationRequest>cmd, callback);
+        }
+        else {
+          dbg.error('Unallowed registration from client');
+          callback(ErrMsg.ServerError);
+        }
+      }
+      else if (cmd.type === MessageType.ConfigureRegistration) {
+
+        let xConfigureRegistrationAck: XConfigureRegistrationAck = {
+          type: MessageType.ConfigureRegistration,
+          allowRegistration: configuration.allowRegistration,
+          doSendRegistrationMail: configuration.doSendRegistrationMail,
+          doCheckCaptcha: configuration.doCheckCaptcha,
+          doCheckInvitationCode: configuration.doCheckInvitationCode
+        }
+        callback(xConfigureRegistrationAck);
       }
       else {
         dbg.error('dispatchXCommand > Unknown type ' + cmd.type);
@@ -568,15 +589,15 @@ class RegistrationSequence {
 
     dbg.log(" ---- start registration sequence ----");
 
-    /* this.checkCaptcha(cmd.response)
-         .then(() => {
-             return this.checkCode(code); // TODO : db.checkCode(code) and  get auth  then((arg ?))
-         }) */
-    //   this.checkCode(code)
-
     let userAck: UserSessionAck;
 
-    this.userManager.createUser(cmd)
+    this.checkCaptcha(cmd.captchaResponse)
+      .then(() => {
+        return this.checkCode(cmd.invitationCode);
+      })
+      .then(() => {
+        return this.userManager.createUser(cmd);
+      })
       .then((userData) => {
         dbg.log('then ' + userData);
         userAck = userData;
@@ -597,72 +618,90 @@ class RegistrationSequence {
 
   private checkCaptcha(response: string) {
 
-    dbg.log('Checking Captcha');
     return new Promise((resolve, reject) => {
 
-      let postData = querystring.stringify({
-        secret: this.captchaSecret,
-        response: response
-        //,remoteip: remoteIp, // optional
-      });
+      if (configuration.doCheckCaptcha) {
 
-      let postOptions = {
-        hostname: 'www.google.com',
-        path: '/recaptcha/api/siteverify',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Content-Length': Buffer.byteLength(postData)
-        }
-      };
+        dbg.log('Checking Captcha ');
 
-      dbg.log('POST https captcha request');
-      dbg.log(postData);
-
-      let req = https.request(postOptions, function (res) {
-
-        dbg.log('statusCode:' + res.statusCode);
-
-        // TODO (4) : check statusCode else resume ? 
-
-        res.setEncoding('utf8');
-        let rawData = '';
-        res.on('data', (chunk: string) => { rawData += chunk; dbg.log('chunck ' + chunk); });
-        res.on('end', (arg: any) => {
-
-          dbg.log('end ' + arg);
-          dbg.log(rawData);
-          let captchAck: captchaResponse = JSON.parse(rawData);
-          dbg.log(captchAck);
-          if (captchAck.success === true) {
-            resolve();
-          }
-          else {
-            dbg.error('captcha failed');
-            reject(ErrMsg.InvalidCaptcha);
-          }
+        let postData = querystring.stringify({
+          secret: this.captchaSecret,
+          response: response
+          //,remoteip: remoteIp, // optional
         });
-      });
-      req.write(postData);
-      req.end();
-      req.on('error', (e: NodeError) => {
-        dbg.error(e); // TODO (4) : req.resume ?
-        reject(<s2c_ChannelMessage>{ type: MessageType.Error, toStringId: ToStringId.ServerError });
-      });
+
+        let postOptions = {
+          hostname: 'www.google.com',
+          path: '/recaptcha/api/siteverify',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        };
+
+        dbg.log('POST https captcha request');
+        dbg.log(postData);
+
+        let req = https.request(postOptions, function (res) {
+
+          dbg.log('statusCode:' + res.statusCode);
+
+          // TODO (4) : check statusCode else resume ? 
+
+          res.setEncoding('utf8');
+          let rawData = '';
+          res.on('data', (chunk: string) => { rawData += chunk; dbg.log('chunck ' + chunk); });
+          res.on('end', (arg: any) => {
+
+            dbg.log('end ' + arg);
+            dbg.log(rawData);
+            let captchAck: captchaResponse = JSON.parse(rawData);
+            dbg.log(captchAck);
+            if (captchAck.success === true) {
+              resolve();
+            }
+            else {
+              dbg.error('captcha failed');
+              reject(ErrMsg.InvalidCaptcha);
+            }
+          });
+        });
+        req.write(postData);
+        req.end();
+        req.on('error', (e: NodeError) => {
+          dbg.error(e); // TODO (4) : req.resume ?
+          reject(<s2c_ChannelMessage>{ type: MessageType.Error, toStringId: ToStringId.ServerError });
+        });
+
+      }
+      else {
+        dbg.log('Skip checking Captcha, configuration.doCheckCaptcha:' + configuration.doCheckCaptcha);
+        resolve();
+      }
     });
   }
 
   private checkCode(code: string): Promise<void> {
 
-    dbg.log('Checking code');
+
     return new Promise<void>((resolve, reject) => {
 
-      if (isNaN(parseInt(code))) {
-        console.info('checkCode > invalid code'); // TODO (5) : code
-        reject(ErrMsg.InvalidCode);
+      if (configuration.doCheckInvitationCode) {
+
+        dbg.log('Checking invitation code ');
+
+        if (isNaN(parseInt(code))) {
+          console.info('checkCode > invalid code'); // TODO (5) : check code from database
+          reject(ErrMsg.InvalidCode);
+        }
+        else {
+          dbg.log('code ok');
+          resolve();
+        }
       }
       else {
-        dbg.log('code ok');
+        dbg.log('Skip checking invitation code, configuration.doCheckInvitationCode:' + configuration.doCheckInvitationCode);
         resolve();
       }
     });
@@ -670,7 +709,7 @@ class RegistrationSequence {
 
   private sendRegistrationMail(dstMail: string) {
 
-    dbg.log('TODO : Sending registration mail');
+    dbg.log('Sending registration mail : ' + configuration.doSendRegistrationMail);
 
     return new Promise<void>((resolve, reject) => {
 
@@ -680,61 +719,51 @@ class RegistrationSequence {
         return;
       }
 
-      let password = Math.round(Math.random() * 10000).toString(); // TODO (1) : password generator
+      if (configuration.doSendRegistrationMail) {
 
-      resolve();
+        let password = Math.round(Math.random() * 10000).toString(); // TODO (1) : password generator
 
+        let uri = configuration.mailServer + '?sec=' + encodeURIComponent(configuration.mailSecret)
+          + '&dst=' + encodeURIComponent(dstMail)
+          + '&kind=1&lang=1&pwd=' + encodeURIComponent(password);
+
+        dbg.log(uri); // TMP
+
+        // TODO (1) : https.request
+        // var lib = uri.indexOf('https') === 0 ? https : http;
+
+        http.get(uri, (res) => {
+          // const statusCode = res.statusCode; // TODO (2) : statuscode
+          res.setEncoding('utf8');
+          var rawData = '';
+
+          res.on('data', (chunk: string) => { rawData += chunk });
+          res.on('end', () => {
+            dbg.log(rawData);
+            let mailAck = JSON.parse(rawData);
+            dbg.log(mailAck);
+
+            if (mailAck.status === 'ok') { // TODO (1) : public interface for mail send ack
+              resolve();
+            }
+            else {
+              dbg.error('sendmail failed');
+              reject(mailAck);
+            }
+          });
+
+        }).on('error', (e: NodeError) => {
+          dbg.error(e);
+          reject(ErrMsg.ServerError);
+        });
+      }
+      else {
+        console.info('Skip sending registration mail');
+        resolve();
+      }
     });
-
-
-    /*   return new Promise<XJsonRegistrationAck>((resolve, reject) => {
- 
-           if (typeof dstMail !== 'string') {  // TODO (1) : email checker
-               console.info('sendRegistrationMail > invalid mail'); // TMP
-               reject({ status: Status.Error, message: DispMsg.InvalidMail });
-               return;
-           }
- 
-           let password = Math.round(Math.random() * 10000).toString(); // TODO (1) : password generator
- 
-           let uri = configuration.mailServer + '?sec=' + encodeURIComponent(configuration.mailSecret)
-               + '&dst=' + encodeURIComponent(dstMail)
-               + '&kind=1&lang=1&pwd=' + encodeURIComponent(password);
- 
-           dbg.log(uri); // TMP
- 
-           // TODO (1) : https.request
-           // var lib = uri.indexOf('https') === 0 ? https : http;
- 
-           http.get(uri, (res) => {
-               const statusCode = res.statusCode;
-               res.setEncoding('utf8');
-               var rawData = '';
- 
-               res.on('data', (chunk: string) => { rawData += chunk });
-               res.on('end', () => {
-                   dbg.log(rawData);
-                   let mailAck: XJsonRegistrationAck = JSON.parse(rawData); // FIXME (1) : not an XJsonRegistrationAck ! Make a XJsonSendMailAck ?
-                   dbg.log(mailAck);
- 
-                   if (mailAck.status === Status.Ok) {
-                       resolve();
-                   }
-                   else {
-                       dbg.error('sendmail failed');
-                       reject(mailAck);
-                   }
-               });
- 
-           }).on('error', (e: NodeError) => {
-               dbg.error(e);
-               reject({ status: Status.Error, message: e.message });
-           });
-       }); */
   }
 }
-
-
 
 export class LoginSequence {
 

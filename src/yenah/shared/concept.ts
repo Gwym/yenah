@@ -56,12 +56,13 @@ export const Defaults = {
     VEGETATION: 0
 }
 
+/*
 function setUniversalTimestep(invSlope: number) {
     dbg.log('setUniversalTimestep ' + invSlope);
     Defaults.QT_SLOPE = invSlope;
     Defaults.ENERGY_SLOPE = invSlope;
     Defaults.BEING_COND_SLOPE = invSlope;
-}
+}*/
 
 // Add dummy values to let the compiler detect signature difference between strings
 // FIXME (5) : if identifier type is changed from string | number to something else (e.g. objects), one needs to clone each time it is affected (ex in toDao())
@@ -184,7 +185,7 @@ function ModifierFactory(modifierDao: ModifierDao): AttributeModifier {
 
 // Organ is a furniture, but it is "non amovible"
 // TODO (1) : implement organs as mixins (interfaces only)
-interface Organ { // DOES NOT extends Entity but implements EntityInterface
+export interface Organ { // DOES NOT extends Entity but implements EntityInterface
 
 }
 
@@ -507,7 +508,7 @@ export abstract class EntityBase implements EntityInterface {
         // TODO (0) : + inventory mass
     }
 
-    canContain(entity: EntityInterface): boolean {
+    canContain(_entity: EntityInterface): boolean {
         // TODO (4) : this.getContentWeight() > this.getMaxCapacity()
         return false;
     }
@@ -846,8 +847,9 @@ export class Agent extends EntityBase implements AgentInterface {
         super.applyModifiers();
     }
 
-    canReceive(furniture: Furniture) {
+    canReceive(_furniture: Furniture) {
         // TODO
+        return false;
     }
 
     // TODO (5) : ~ AbsAgentExtends Agent
@@ -976,10 +978,10 @@ export class Cell implements Target { // TODO (1) : implements EntityContainer
 
     }
 
-    getMoveCostT(a: AgentInterface): number {
+    getMoveCostT(_a: AgentInterface): number {
         return Number.POSITIVE_INFINITY; // undefined ?
     }
-    getMoveCostE(a: AgentInterface): number {
+    getMoveCostE(_a: AgentInterface): number {
         return Number.POSITIVE_INFINITY;
     }
 

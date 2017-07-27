@@ -1,4 +1,4 @@
-"use strict";
+
 
 // Tu vas m'faire une scène, nan ?!
 

@@ -1,10 +1,10 @@
 import * as path from 'path';
 import * as http from 'http';
-import * as https from 'https';
+//import * as https from 'https';
 import * as url from 'url';
 import * as fs from 'fs';
 
-import { dbg, LoggerParts } from './logger'
+import { dbg } from './logger'
 import { HttpStatusCode } from './dispatcher'
 
 export interface StaticServerOptions {
@@ -104,7 +104,7 @@ export class StaticServer {
         }
     }
 
-    protected resolve(relPath: string) {
+    protected resolvePath(relPath: string) {
         return path.resolve(path.join(this.rootPath, relPath));
     }
 
@@ -117,7 +117,7 @@ export class StaticServer {
             if (pathname === '/') {
                 pathname = this.defaultIndexFile
             }
-            pathname = this.resolve(pathname);
+            pathname = this.resolvePath(pathname);
 
             // Make sure we're not trying to access a file outside of the root.
             if (pathname.indexOf(this.rootPath) !== 0) {
@@ -159,6 +159,7 @@ export class StaticServer {
                             .on('close', function () {
                                 // dbg.log('StaticServer.Serve > Streaming ' + pathname, LoggerParts.Filename);
                                 res.end();
+                                resolve();
                             }).on('error', function (err) {
                                 reject({ status: HttpStatusCode.InternalServerError });
                                 dbg.log('StaticServer.Serve > Streaming error ' + err);
@@ -174,7 +175,6 @@ export class StaticServer {
                     reject({ status: HttpStatusCode.BadRequest });
                 });
             }
-
         });
 
         p.then(() => {
