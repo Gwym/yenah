@@ -8,7 +8,7 @@ Projet de "jeu de la vie" en ligne (simulation d'évolution)
 
 Project of online "Webgame of life" (simulation of evolution)
 
-[[https://github.com/Gwym/yenah/blob/master/design/screenshots/2017-07-25-yenah_desktop.jpg|alt=yenah]]
+![yenah](https://github.com/Gwym/yenah/blob/master/design/screenshots/2017-07-25-yenah_desktop.jpg)
 
 # building
 
