@@ -3,7 +3,7 @@ import {
     ItemIdentifier, UserItemIdentifier, AgentItemIdentifier, IndirectionItemIdentifier, EntityIdentifier, EntityOptions, AgentOptions, CellDao, EntityVarOptions,
     CollectionId, PilotableAbsIdDao, SpaceRef
 } from './shared/concept';
-import { AbsEntityIdentifier, AbsZone, PilotedRelToAbsDictionary, YeanhUserSession } from './engine'
+import { AbsEntityIdentifier, PilotedRelToAbsDictionary, YeanhUserSession, ZoneAbsDao } from './engine'
 
 import { UpdateWriteOpResult, InsertWriteOpResult, BulkWriteResult } from 'mongodb'; // TODO (5) : generic result
 import { XLoginRequest, XRegistrationRequest, UserSessionAck } from '../services/shared/messaging'
@@ -104,7 +104,7 @@ export abstract class AsyncPersistor implements UserAsyncManager {
     // abstract recallPilotedIndirections(userAbsIId: ItemIdentifier): Promise<IndirectionIdDao[]>
     // abstract getZoneDao(actorSelector: AbsIdentifier): Promise<AbsZoneDao>
     abstract getActorPosition(actorIid: AgentItemIdentifier): Promise<SpaceRef>
-    abstract getZoneFromLocation(originX: number, originY: number, radius: number, actorId: AbsEntityIdentifier): Promise<AbsZone>
+    abstract getZoneFromLocation(originX: number, originY: number, radius: number, actorId: AbsEntityIdentifier, snapshotDH: number): Promise<ZoneAbsDao>
     abstract saveZoneDao(saveDao: SaveZoneDao): Promise<BulkSaveResult[]>
     abstract populate(data: InsertZoneDao): Promise<InsertResult[]>
 

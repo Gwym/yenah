@@ -8,7 +8,7 @@ export var configuration: ConfigurationInterface;
 
 try {
   configuration = <ConfigurationInterface>JSON.parse(fs.readFileSync('configuration.json').toString());
-  // FIXME (0) : set default value for each missing field if not set in conf file ?
+  // FIXME (1) : set default value for each missing field if not set in conf file ?
 }
 catch (e) {  // file not found, parse error, ... => set default
   dbg.warn(e);

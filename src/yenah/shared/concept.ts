@@ -1,6 +1,7 @@
 
 import { CoreAction, ActMoveTo, ActTurnTo, ActPickUp, ActGive } from './action'
 import { dbg } from '../../services/logger'
+import { Zone } from "./zone";
 
 export enum MatterType { Rock, Flesh, Wood }
 export enum ConceptClass { IndeterminateEntity, Rock, Slug, Sheep, BarbarianF }
@@ -8,27 +9,31 @@ export enum CellType { InderteminateCell, CellEarth, CellSand, CellShallowWater,
 export enum ActId { ActMoveTo, ActTurnTo, ActPickUp, ActLayDown, ActGive }
 export enum FailId { NoAct, Qt, Energy, RangeIs1, CannotWelcome, CannotContain }
 export enum DynAttr { Mass, Cond, Qt, Energy }
-export enum ModAttr { CondMax, CondSlope, EnergyMax, EnergySlope, QtMax, QtSlope, MoveEarth, MoveWater, MoveAir, Solidity }
+export enum ModAttrKind { Cond, Energy, Qt, MoveEarth, MoveWater, MoveAir, Solidity }
 
-export enum CollectionId { Indirection, User, Furniture, Agent, Cell, Session } // FIXME (0) => in persistor ? or needed by client for Indirection ?
+export enum InteractionType { Cut, Blunt, Fire, Acid, Electricity } // , Poison excluded (time dependant)
+
+export enum CollectionId { Indirection, User, Furniture, Agent, Cell, Session } // FIXME (1) :  persistor only information ? or needed by client for Indirection ?
+
+export const GO_FORWARD = true
 
 // TODO (5) : const object =>  Object.freeze() ?
-// const MS_PER_TICK = 60000; // 1000ms*60s ~ 1 tick = 1 minute irl (slow time-dependent mode)
-const MS_PER_TICK = 1000; // 1000ms ~ 1 tick = 1 second irl (fast time-dependent mode)
-// const MS_PER_TICK = 1; // 1 tick = 1 engine cycle (time-independent mode)
 
 export const Constants = {
-    DT: MS_PER_TICK, // number of irl miliseconds per tick  
-    DT_IGDAY: 600 * MS_PER_TICK, // 10h * 60min ~ 1 ig day = 10h irl 
-    DT_IGYEAR: 43200 * MS_PER_TICK, // 30days * 24h * 60min ~ 1 ig year = 1 month irl 
+    MAX_EVENTS_PER_TICK: 100,
+    DT_IRLSECOND: 1000,
+    DT_IRLMINUTE: 60000,
+    DT_IRLHOUR: 3600000,
+    DT_IGDAY: 600000, // 1000ms * 60min * 10h => 1 ig day = 10h irl 
+    DT_IGYEAR: 43200000, // 1000ms * 60min * 24h * 30days *  => 1 ig year ~ 1 month irl 
 
     MAX_VISION_RADIUS: 4,  // 32, //  4 : devel
     MAX_VEGETATION: 127,
 
     NO_SLOPE: 0,
-    SLOPE_ONE_PER_IRLHOUR: 1 / (MS_PER_TICK * 60),
-    //INVSLOPE_ONE_PER_IRLMIN: MS_PER_TICK,
-    //INVSLOPE_ONE_PER_IRLHOUR: MS_PER_TICK * 60,
+    SLOPE_ONE_PER_IRLSECOND: 1 / 1000, // 1 per 1000ms
+    SLOPE_ONE_PER_IRLMINUTE: 1 / 60000, // 1 per 60 * 1000ms
+    SLOPE_ONE_PER_IRLHOUR: 1 / 3600000, // 1 per 60 * 60 * 1000ms
     MAX_BEING_MASS: 10000, // maximal being mass (~ 10 tons), used to normalize masses wrt. aging slope
     COND_MAX: 100, // condition of an entity 100% // TODO (2) : if condMax is allways 100 => constant not in persistor ? or is it usefull for buildings ?
     GA_AGENT_MIN_COND: 10, // ~ weakest creature
@@ -37,10 +42,13 @@ export const Constants = {
 }
 
 const BEING_MASS = 64;
+
 export const Defaults = {
     FURNITURE_MASS: 8, // ~ 8Kg little furniture, average newborn being mass 
     FURNITURE_COND_SLOPE: Constants.NO_SLOPE, // TODO (4) : very slow degradation of furnitures ?
+    FURNITURE_COND_MAX: Constants.COND_MAX,
     BEING_COND_SLOPE: Constants.SLOPE_ONE_PER_IRLHOUR,
+    BEING_COND_MAX: Constants.COND_MAX,
     BEING_MASS: BEING_MASS, // default : ~64Kg 
 
     FAST_MASS_SLOPE: Constants.DT_IGYEAR / BEING_MASS, // fast ageing : juvenil to adult in one ig year ~ animal-like
@@ -53,16 +61,62 @@ export const Defaults = {
     MOVE_EARTH: 1,
     MOVE_WATER: 0,
     MOVE_AIR: 0,
+    ATTACK: <Damage>{},
+    SOLIDITY: <Solidity>{},
     VEGETATION: 0
 }
 
-/*
-function setUniversalTimestep(invSlope: number) {
-    dbg.log('setUniversalTimestep ' + invSlope);
-    Defaults.QT_SLOPE = invSlope;
-    Defaults.ENERGY_SLOPE = invSlope;
-    Defaults.BEING_COND_SLOPE = invSlope;
-}*/
+export type Instant = number // An absolute moment in time (new Date().getTime())
+export type Duration = number // A relative duration, given by a difference between two instants
+
+// TODO (1) : all attributes normalized, so condMax = 1, qtMax = 1, energyMax = 1
+export type Slope = number
+export type Angle = number
+export enum Direction {
+    W = 0,
+    NW = Math.PI / 4,
+    N = Math.PI / 2,
+    NE = 3 * Math.PI / 4,
+    E = Math.PI,
+    SE = 5 * Math.PI / 4,
+    S = 6 * Math.PI / 4,
+    SW = 7 * Math.PI / 4
+}
+
+// interface to synchronise queries 
+export interface PositionGauge {
+    posX: any,
+    posY: any
+}
+
+// FIXME (1) : for dev server side use, i18n is only available client side 
+// TODO (1) : enum ToStringId.perSec , per etc, display per IRL or per IG option
+// TODO (2) : https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Objets_globaux/Number/toLocaleString
+export function slopeToString(slope: Slope): string {
+
+    let perSec = Constants.SLOPE_ONE_PER_IRLSECOND / slope
+    let perHour = Constants.SLOPE_ONE_PER_IRLHOUR / slope
+    return slope + ' ('
+        + perSec + '/s '
+        + perHour + '/h)'
+    // + (Math.round(perSec * 100) / 100) + '/s ' // perSec.toLocaleString(undefined, {maximumSignificantDigits: 2}) + '/s ' 
+    // + (Math.round(perHour * 100) / 100) + '/h)' // perHour.toLocaleString(undefined, {maximumSignificantDigits: 2}) + '/h)'
+}
+
+export function durationToString(dt: Duration) {
+    let seconds = dt / Constants.DT_IRLSECOND
+    let hours = dt / Constants.DT_IRLHOUR
+    return dt + 'ms ('
+        + seconds + 's '
+        + hours + 'h)'
+    // + (Math.round(seconds * 100) / 100) + 's ' // perSec.toLocaleString(undefined, {maximumSignificantDigits: 2}) + '/s ' 
+    //+ (Math.round(hours * 100) / 100) + 'h)' // perHour.toLocaleString(undefined, {maximumSignificantDigits: 2}) + '/h)'
+}
+
+export function instantToString(instant: Instant) {
+    return new Date(instant).toString();
+}
+
 
 // Add dummy values to let the compiler detect signature difference between strings
 // FIXME (5) : if identifier type is changed from string | number to something else (e.g. objects), one needs to clone each time it is affected (ex in toDao())
@@ -129,45 +183,383 @@ export var absoluteSpaceOrigin: SpaceRef = {
     originY: 0
 }
 
-// modifiers.ts
+export enum AttrEventKind { ModExpired, MaxReached, ZeroReached }
 
-export interface ModifierDao {
-    type: ModAttr
-    originDH: number
+export interface AttributeEventInterface {
+    readonly kind: AttrEventKind
+    readonly instant: Instant
+    toString(): string
+}
+
+export class AttributeEvent implements AttributeEventInterface {
+
+    constructor(public readonly kind: AttrEventKind, public readonly instant: Instant) { }
+
+    toString() {
+        return '{AttrEvt '
+            + ' kind:' + this.kind + ' (' + AttrEventKind[this.kind]
+            + ') instant:' + this.instant + ' ' + instantToString(this.instant)
+            + ' }'
+    }
+}
+
+// dynamic_attributes
+
+export interface DynamicAttributeInterface {
+    value: number,
+    maximum: number,
+    slope: Slope,
+    instant: Instant
+}
+
+export interface LinearAttributeInterface {
+    currentValue: number
+    readonly baseMaximum: number
+    readonly baseSlope: Slope
+    readonly currentInstant: Instant
+    getNextEvents(upToInstant: number, goForward: boolean): AttributeEventInterface[]
+    addModifier(modifier: AttributeModifier): void
+    getModifiedAttribute(): DynamicAttributeInterface
+}
+
+export class LinearAttribute implements LinearAttributeInterface {
+
+    protected _value: number
+    protected _maximum: number
+    protected _slope: Slope
+    protected _currentInstant: Instant
+
+    get baseMaximum() { return this._maximum }
+    get baseSlope() { return this._slope }
+    get currentInstant() { return this._currentInstant }
+    get currentValue() { return this._value }
+    set currentValue(v: number) { this.setCurrentValue(v) }
+
+    protected attributeModifiers?: Set<AttributeModifier>
+
+    constructor(value: number, maximum: number, slope: number, instant: number, modifiers?: AttributeModifierDao[]) {
+        this._value = value
+        this._maximum = maximum
+        this._slope = slope
+        this._currentInstant = instant
+        if (modifiers && modifiers.length) {
+            for (let modifierDao of modifiers) {
+                this.addModifier(ModifierFactory(modifierDao))
+            }
+        }
+    }
+
+    /* getBaseAttribute(): DynamicAttributeInterface {
+ 
+         return {
+             value: this._value,
+             maximum: this._maximum,
+             slope: this._slope,
+             instant: this._currentInstant
+         }
+     } */
+
+    protected setCurrentValue(newValue: number) {
+
+        let modAttr = this.getModifiedAttribute()
+
+        newValue = Math.max(Math.min(newValue, modAttr.maximum), 0)
+
+        // TODO (0) : generate event on max or zero reaching ?
+        // return events ...
+
+        this._value = newValue
+    }
+
+    getModifiedAttribute(): DynamicAttributeInterface {
+
+        let currentSlope = this._slope
+        let currentMax = this._maximum
+
+        // virtually apply modifiers
+        if (this.attributeModifiers) {
+            for (let modifier of this.attributeModifiers) {
+                let expirationInstant = this._currentInstant + modifier.duration
+
+                if (expirationInstant >= this._currentInstant) {
+
+                    if (modifier.slopeVariation) {
+                        currentSlope += modifier.slopeVariation
+                    }
+                    if (modifier.maxVariation) {
+                        currentMax += modifier.maxVariation
+                    }
+                }
+                else {
+                    dbg.error('Modifier has expired : remaining unhandled modifier ' + modifier)
+                    // TODO (2) : remove expired ?
+                }
+            }
+        }
+
+        // let currentValue = this.getDynNormalValue(this._currentInstant, this._value, currentMax, currentSlope)
+
+        return {
+            value: this._value,
+            maximum: currentMax,
+            slope: currentSlope,
+            instant: this._currentInstant
+        }
+    }
+
+    protected getDynNormalValue(dt: number, val: number, max: number, slope: number) {
+
+        if (slope != Constants.NO_SLOPE) {
+            val += dt * slope;  // FIXME (1) : slope should be an integer. Use inverseSlope to store in options ?
+        }
+        let limitedVal = val > max ? max : (val < 0 ? 0 : val);
+
+        dbg.attr('getDyn > ' + limitedVal
+            + ' (max:' + 1
+            + ' dh:' + this._currentInstant
+            + ' detaT:' + dt
+            + ' slope: ' + slope
+            + ' real: ' + val + ') '
+        )
+
+        return limitedVal;
+    }
+
+    stabiliseAt(newSnapshotInstant: Instant): AttributeEventInterface[] {
+
+        if (newSnapshotInstant < this._currentInstant) { throw 'Cannot go back in time' }
+
+        let happenedEvents: AttributeEventInterface[] = []
+        let nextEvents: AttributeEventInterface[]
+
+        if (newSnapshotInstant === this._currentInstant) { 
+            dbg.error('stabilising at already reached current instant')
+            return happenedEvents
+        }
+
+        let loopCount = 0
+        for (; loopCount < Constants.MAX_EVENTS_PER_TICK; loopCount++) {
+            nextEvents = this.getNextEvents(newSnapshotInstant, GO_FORWARD)
+
+            if (nextEvents.length) {
+                happenedEvents.push(...nextEvents)
+                if (nextEvents[0].instant <= newSnapshotInstant) {
+                    break
+                }
+            }
+            else {
+                break
+            }
+        }
+        if (loopCount === Constants.MAX_EVENTS_PER_TICK) {
+            throw 'Allowed loops overflow : ' + Constants.MAX_EVENTS_PER_TICK
+        }
+
+        let snapshotSlope = this._slope
+        let snapshotMax = this._maximum
+
+        if (this.attributeModifiers) {
+            for (let modifier of this.attributeModifiers) {
+                if (modifier.slopeVariation) {
+                    snapshotSlope += modifier.slopeVariation
+                }
+                if (modifier.maxVariation) {
+                    snapshotMax += modifier.maxVariation
+                }
+            }
+        }
+
+        this.stabiliseFinallyAt(newSnapshotInstant, snapshotMax, snapshotSlope)
+
+        return happenedEvents
+    }
+
+    protected stabiliseFinallyAt(newSnapshotInstant: Instant, snapshotMax: number, snapshotSlope: number): void {
+
+        // FIXME (3) : REF MAXMOD max modifier expiration should decrease currentValue
+        this._value = this.getDynNormalValue(newSnapshotInstant, this._value, snapshotMax, snapshotSlope)
+
+        if (this.attributeModifiers) {
+            for (let modifier of this.attributeModifiers) {
+                let expirationInstant = this._currentInstant + modifier.duration
+
+                if (expirationInstant <= newSnapshotInstant) {
+                    this.attributeModifiers.delete(modifier)
+                }
+                else {
+                    modifier.duration -= newSnapshotInstant - this._currentInstant
+                }
+            }
+        }
+
+        this._currentInstant = newSnapshotInstant
+    }
+
+    getNextEvents(upToInstant = Number.POSITIVE_INFINITY, goForward = false): AttributeEventInterface[] {
+
+        let currentSlope = this._slope
+        let currentMax = this._maximum
+        let nextExpiration = Number.POSITIVE_INFINITY
+        let nextMaxReachingInstant = Number.POSITIVE_INFINITY
+        let nextZeroReachingInstant = Number.POSITIVE_INFINITY
+        let happeningEvents: AttributeEventInterface[] = []
+
+        if (this.attributeModifiers) {
+            for (let modifier of this.attributeModifiers) {
+                nextExpiration = Math.min(nextExpiration, this._currentInstant + modifier.duration)
+
+                if (modifier.slopeVariation) {
+                    currentSlope += modifier.slopeVariation
+                }
+                if (modifier.maxVariation) {
+                    currentMax += modifier.maxVariation
+                }
+            }
+        }
+
+        if (currentSlope > 0) {
+            // TODO (0) : REF IntegerInstant integer DH => Math.floor, ceil, round ? setter() ?
+            nextMaxReachingInstant = this._currentInstant + (currentMax - this._value) / currentSlope
+        }
+        else if (currentSlope < 0) {
+            // TODO (0) : REF IntegerInstant integer DH => Math.floor, ceil, round ?
+            nextZeroReachingInstant = this._currentInstant - this._value / currentSlope
+        }
+
+        let nextEventInstant = Math.min(nextMaxReachingInstant, nextZeroReachingInstant, nextExpiration)
+
+        if (nextEventInstant !== Number.POSITIVE_INFINITY
+            && nextEventInstant <= upToInstant) {
+
+            if (nextMaxReachingInstant === nextEventInstant) {
+                happeningEvents.push(new AttributeEvent(AttrEventKind.MaxReached, nextEventInstant))
+                // TODO (0) : currentValue = currentMax ? // avoid rounding issues
+            }
+            if (nextZeroReachingInstant === nextEventInstant) {
+                happeningEvents.push(new AttributeEvent(AttrEventKind.ZeroReached, nextEventInstant))
+                // TODO (0) : currentValue = 0 ? // avoid rounding issues
+            }
+            if (nextExpiration === nextEventInstant) {
+                // FIXME (1) : should generate one event per modifier ?
+                happeningEvents.push(new AttributeEvent(AttrEventKind.ModExpired, nextEventInstant))
+            }
+
+            if (goForward) {
+
+                this.stabiliseFinallyAt(nextEventInstant, currentMax, currentSlope)
+                /* // FIXME (3) : REF MAXMOD max modifier expiration should decrease currentValue
+                 this._value = this.getDynNormalValue(nextEventInstant, this._value, currentMax, currentSlope)
+ 
+                 if (this.attributeModifiers) {
+                     for (let modifier of this.attributeModifiers) {
+                         let expirationInstant = this._currentInstant + modifier.duration
+ 
+                         if (expirationInstant <= nextEventInstant) {
+                             this.attributeModifiers.delete(modifier)
+                         }
+                     }
+                 }
+ 
+                 this._currentInstant = nextEventInstant */
+            }
+        }
+
+        return happeningEvents
+    }
+
+    addModifier(modifier: AttributeModifier) {
+
+        // TODO (1) : check for duplicates ? Merge modifiers ?
+
+        if (this.attributeModifiers === undefined) {
+            this.attributeModifiers = new Set<AttributeModifier>()
+        }
+        this.attributeModifiers.add(modifier)
+    }
+
+    modifierToDao(kind: ModAttrKind): AttributeModifierDao[] | undefined {
+        // TODO (0) : rebase to given DH ?
+        if (this.attributeModifiers && this.attributeModifiers.size > 0) {
+
+            let modDaos: AttributeModifierDao[] = [];
+            for (let modi of this.attributeModifiers) {
+                modDaos.push({
+                    kind: kind,
+                    duration: modi.duration
+                });
+            }
+
+            return modDaos;
+
+        }
+        return;
+    }
+
+    toString() {
+        return '{LinAttr, val:' + this._value
+            + ', max:' + this._maximum
+            + ', slope:' + slopeToString(this._slope)
+            + ', dh:' + this._currentInstant
+            + '}'
+    }
+
+}
+
+// modifiers
+
+export interface AttributeModifierDao {
+    kind: ModAttrKind
+    // originDH: number
     duration: number
 }
 
-class AttributeModifier implements ModifierDao {
+// abstract
+class AttributeModifier {
 
-    type: ModAttr
-    originDH: number
+    // kind: ModAttrKind
+    // originDH: number
+    slopeVariation?: number
+    maxVariation?: number
+    // TODO (1) : setter, allow only positive integer
     duration: number
-    // abstract mod(this: Entity): void
-    mod(baseValue: number) { return baseValue }
+    // abstract 
+    // applyModificationTo(_linearAttribute: LinearAttribute): void { }
 
-    constructor(modifierDao: ModifierDao) {
-        this.type = modifierDao.type;
-        this.originDH = modifierDao.originDH;
+    constructor(modifierDao: AttributeModifierDao) {
+        // this.kind = modifierDao.kind;
+        // this.originDH = modifierDao.originDH;
         this.duration = modifierDao.duration;
     }
 }
 
-class CondSlopeModifier extends AttributeModifier {
+// ~ Poison (Agents), Wear (furniture, buildings) : reverse condition slope 
+// TODO (1) : fixed slope ?
+export class CondModifier extends AttributeModifier {
 
-    mod(baseCondSlope: number) {
-        return -baseCondSlope;
-    }
+    slopeVariation = - 2 * Constants.SLOPE_ONE_PER_IRLSECOND
+    /* applyModificationTo(linearAttribute: LinearAttribute) {
+ 
+         // FIXME (0) : poison => if < 0 keep sign !
+         linearAttribute.slope *= -1;
+     }*/
+}
+
+// TODO (3) : max modifier
+// FIXME (3) : REF MAXMOD max modifier expiration should decrease currentValue
+
+interface AttributeModifierCollection {
+    condModifiers?: CondModifier[]
+
 }
 
 // TODO (1) : add to World constructors ?
 
 var ModifierConstructors: typeof AttributeModifier[] = [];
-ModifierConstructors[ModAttr.CondSlope] = CondSlopeModifier;
+ModifierConstructors[ModAttrKind.Cond] = CondModifier;
 
-function ModifierFactory(modifierDao: ModifierDao): AttributeModifier {
+export function ModifierFactory(modifierDao: AttributeModifierDao): AttributeModifier {
 
-    return new ModifierConstructors[modifierDao.type](modifierDao);
-
+    return new ModifierConstructors[modifierDao.kind](modifierDao);
 }
 
 // DynModifier
@@ -190,39 +582,27 @@ export interface Organ { // DOES NOT extends Entity but implements EntityInterfa
 }
 
 // TODO (2) : interface Armature { } => skeleton / chitin
-
-export interface Solidity {
+// TODO (1) : rename as InteractionsInterface ? InteractionsDao ? Options ?
+export interface SolidityInterface {
     cut?: number
     blunt?: number
     fire?: number
     acid?: number
     elec?: number
-    poison?: number
+    // poison?: number
 }
 
 // Passive effect on contact
-export interface Damage extends Solidity {
+/* export interface DamageInterface extends Solidity {
     // poison?: number // Poisoning on consumption
+} */
+
+export class Solidity extends Map<InteractionType, number> {
+
 }
 
-// all attributes are normalized, so condMax = 1, qtMax = 1, energyMax = 1
-export type Slope = number
-export type Angle = number
-export enum Direction {
-    W = 0,
-    NW = Math.PI / 4,
-    N = Math.PI / 2,
-    NE = 3 * Math.PI / 4,
-    E = Math.PI,
-    SE = 5 * Math.PI / 4,
-    S = 6 * Math.PI / 4,
-    SW = 7 * Math.PI / 4
-}
+export class Damage extends Solidity {
 
-// interface to sync queries 
-export interface PositionGauge {
-    posX: any,
-    posY: any
 }
 
 // interface Position : Conflict with es api https://developer.mozilla.org/en-US/docs/Web/API/Position => rename as CartesianPosition
@@ -267,7 +647,7 @@ export interface EntityVarOptions extends CartesianPosition {
     updateDH: number
     // TODO (1) : Referential : Identifier
     theta: Angle // direction in XY plane
-    cond: number
+    cond?: number
 }
 
 export interface EntityOptions {
@@ -279,10 +659,10 @@ export interface EntityOptions {
     mass?: number
     mainMaterial?: MatterType	// TODO (4) : defined by solidity ? being=> flesh/vegetal
     mainColor?: number // (visibility modifier ?)
-    solidity?: Solidity
+    solidity?: SolidityInterface
     passiveRetort?: Damage
     baseCapacity?: 0 // TODO (2) : inventory max length ? or getMassSum() limit ?
-    modifiers?: ModifierDao[]
+    attributeModifiers?: AttributeModifierDao[]
 }
 
 export interface EntityIdOptions extends EntityOptions {
@@ -292,7 +672,7 @@ export interface EntityIdOptions extends EntityOptions {
 export interface EntityInterface extends Target {
 
     gId: EntityIdentifier
-    updateDH: number
+
     readonly varModified: boolean
     readonly fullModified: boolean
     readonly reactions: ActId[]
@@ -300,12 +680,20 @@ export interface EntityInterface extends Target {
     theta: number
     posX: number
     posY: number
+
     cond: number
-    readonly condSlope: number
-    readonly condMax: number
+    getModifiedCond(): DynamicAttributeInterface
+    /* readonly condSlope: number
+     readonly condMax: number */
     readonly mass: number
+    readonly solidity: Solidity
 
     readonly inventory: EntityInterface[]
+
+    readonly updateDH: number
+    getNextEvents(upToInstant?: number): AttributeEventInterface[]
+    getNextCriticalEvent(upToInstant: Instant): AttributeEventInterface | undefined
+    stabiliseAt(updateDH: number): AttributeEventInterface[]
 
     canContain(entity: EntityInterface): boolean
 
@@ -327,9 +715,10 @@ export abstract class EntityBase implements EntityInterface {
     // protected dynAttr: DynamicAttribute[]
     // protected organs: Organ[]
     inventory: EntityInterface[] = [] // TODO (0) : readonly inventory modifications getter/setter
-    protected modifiers: AttributeModifier[] = []
+    protected attributeModifiers: AttributeModifierCollection = {}
     // discretions: number[], // visibility of each attribute by an observer
     readonly reactions: ActId[] = [] // TODO (1) : reactions[indexedActs] or reactionsList[].push (acts...) save in DB or fixed by entType ?
+    readonly solidity: Solidity
 
     protected _classId = ConceptClass.IndeterminateEntity
     get entType() { return this._classId }
@@ -345,44 +734,23 @@ export abstract class EntityBase implements EntityInterface {
     protected _posY: number
     get posY() { return this._posY }
     set posY(v: number) { if (v !== this._posY) { this._posY = v; this.varModified = true } }
-    protected _cond: number
-    get cond() { return this._cond }
-    set cond(v: number) { if (v !== this._cond) { this._cond = v; this.varModified = true } }
-    protected _condSlope: Slope
-    protected modCondSlope: Slope
-    get condSlope() { return this.modCondSlope }
-    protected _condMax: number
-    get condMax() { return this._condMax }
+
+    protected _cond: LinearAttribute;
+    get cond() { return this._cond.currentValue; }
+    set cond(v: number) { if (v !== this._cond.currentValue) { this._cond.currentValue = v; this.varModified = true } }
+    getModifiedCond(): DynamicAttributeInterface {
+        return this._cond.getModifiedAttribute();
+    }
+    /*  get condSlope(): Slope { return this._cond.slope }
+      get condMax() { return this._cond.maximum } */
 
     protected _mass: number // Mass is fixed for furnitures but dynamic for agents
     get mass() { return (this._mass) }
 
-    protected _updateDH: number // "entity update time" : dynamic time for this Entity instance
+    protected _updateDH: number
     get updateDH() { return this._updateDH }
-    set updateDH(newUpdateDH: number) {
 
-        // update cond
-        let dt = newUpdateDH - this._updateDH;
-
-        if (dt < 0) {
-            throw 'Entity.set updateDH > Trying to reverse time. newUpdateDH ' + newUpdateDH + ' < ' + this._updateDH;
-        }
-        else if (dt === 0) {
-            return;
-        }
-
-        this.varModified = true
-        this._updateDH = newUpdateDH;
-
-        this.applyModifiers();
-        this._cond = this.getDynNormalValue(dt, this._cond, this._condMax, this.modCondSlope);
-
-    }
-
-    // FIXME (5) : do not use constructor, applyModifiers 'post-constructor' must be called after all other inits,
-    // and 'this' cannot be accessed before super() call => call fromOptions from each extended constructor
-    // constructor(opt: EntityOptions) {} 
-    protected fromOptions(opt: EntityIdOptions) {
+    constructor(opt: EntityIdOptions) {
 
         this.reactions.push(ActId.ActPickUp, ActId.ActLayDown);
 
@@ -395,87 +763,119 @@ export abstract class EntityBase implements EntityInterface {
         this._theta = opt.varAttr.theta;
 
         this._mass = opt.mass !== undefined ? opt.mass : Defaults.FURNITURE_MASS;
-        this._condSlope = opt.condSlope !== undefined ? opt.condSlope : Defaults.FURNITURE_COND_SLOPE;
-        this._condMax = opt.condMax !== undefined ? opt.condMax : Constants.COND_MAX;
-        this._cond = opt.varAttr.cond !== undefined ? opt.varAttr.cond : this._condMax;
+        let condMax = opt.condMax !== undefined ? opt.condMax : Defaults.FURNITURE_COND_MAX;
+        this._cond = new LinearAttribute(
+            opt.varAttr.cond !== undefined ? opt.varAttr.cond : condMax,
+            condMax,
+            opt.condSlope !== undefined ? opt.condSlope : Defaults.FURNITURE_COND_SLOPE,
+            opt.varAttr.updateDH,
+            opt.attributeModifiers
+        );
+        this.solidity = new Solidity(); // opt.solidity !== undefined ? opt.solidity : Defaults.SOLIDITY;
+        if (opt.solidity) {
+            // TODO (3) : for ... or store in database directly with number indexes ?
+            // for (let interactionKind in opt.solidity) { this.solidity.set(Mapping[interactionKind], opt.solidity[interactionKind]) }
+            if (opt.solidity.cut) { this.solidity.set(InteractionType.Cut, opt.solidity.cut) }
+            if (opt.solidity.blunt) { this.solidity.set(InteractionType.Blunt, opt.solidity.blunt) }
+            if (opt.solidity.fire) { this.solidity.set(InteractionType.Fire, opt.solidity.fire) }
+            if (opt.solidity.acid) { this.solidity.set(InteractionType.Acid, opt.solidity.acid) }
+            if (opt.solidity.elec) { this.solidity.set(InteractionType.Electricity, opt.solidity.elec) }
+            // if (opt.solidity.poison) { this.solidity.set(InteractionType.Poison,  opt.solidity.poison) }
+        }
+    }
 
-        // TODO (0) : modifiers
-        if (opt.modifiers) {
-            for (let modifierDao of opt.modifiers) {
-                this.addModifier(ModifierFactory(modifierDao));
+    getNextEvents(upToInstant?: number): AttributeEventInterface[] {
+
+        // TODO (0) : other events, other attributes, objectives, memory, etc ?
+
+        return this._cond.getNextEvents(upToInstant)
+    }
+
+    getNextCriticalEvent(upToInstant = Number.POSITIVE_INFINITY) {
+
+        let events = this._cond.getNextEvents(upToInstant)
+
+        for (let evt of events) {
+            if (evt.kind === AttrEventKind.ZeroReached && evt.instant <= upToInstant) {
+                return evt
             }
         }
+        return
+    }
 
-        this.applyModifiers();
+    stabiliseAt(newUpdateDH: number): AttributeEventInterface[] {
+
+         let dt = newUpdateDH - this._updateDH
+ 
+         if (dt < 0) {
+             throw 'Cannot go back in time'
+         }
+ 
+         this.varModified = true
+         this._updateDH = newUpdateDH
+ 
+       //  this.applyModifiers(newUpdateDH);
+ 
+         let happenedEvents = this._cond.stabiliseAt(newUpdateDH)
+ 
+         // TODO (0) : _childStabiliseUpTo()
+
+        return happenedEvents
     }
 
     // TODO (1) : give stable/instable info to stablilize ? 
     // TODO (1) : separate positive only and positive/negative allowed ?
 
     // get dynamic attribute normalized value
-    protected getDynNormalValue(dt: number, val: number, max: number, slope: number) {
+    /* protected getDynNormalValue(dt: number, val: number, max: number, slope: number) {
+ 
+         if (slope != Constants.NO_SLOPE) {
+             val += dt * slope;  // FIXME (1) : slope should be an integer. Use inverseSlope to store in options ?
+         }
+         let limitedVal = val > max ? max : (val < 0 ? 0 : val);
+ 
+         dbg.attr('getDyn > ' + limitedVal
+             + ' (max:' + 1
+             + ' dh:' + this._updateDH
+             + ' detaT:' + dt
+             + ' slope: ' + slope
+             + ' real: ' + val + ') from '
+             + this.gId
+         );
+ 
+         return limitedVal;
+     } */
 
-        if (slope != Constants.NO_SLOPE) {
-            val += dt * slope;  // FIXME (1) : slope should be an integer. Use inverseSlope to store in options ?
-        }
-        let limitedVal = val > max ? max : (val < 0 ? 0 : val);
+    /* private addModifier(modifier: AttributeModifier) {
+ 
+         if (modifier.originDH + modifier.duration >= this._updateDH) {
+             console.error('addModifier > Trying to add an expired modifier');
+             return;
+         } 
+ 
+         // TODO (1) : check for duplicates ? Merge modifiers ?
+ 
+         if (modifier.kind === ModAttrKind.Cond) {
+             if (this.attributeModifiers.condModifiers === undefined) {
+                 this.attributeModifiers.condModifiers = [];
+             }
+             this.attributeModifiers.condModifiers.push(modifier);
+         }
+ } */
 
-        dbg.log('getDyn > ' + limitedVal
-            + ' (max:' + 1
-            + ' dh:' + this._updateDH
-            + ' detaT:' + dt
-            + ' slope: ' + slope
-            + ' real: ' + val + ') from '
-            + this.gId
-        );
-
-        return limitedVal;
-    }
-
-    private addModifier(modifier: AttributeModifier) {
-
-        if (modifier.originDH + modifier.duration >= this.updateDH) {
-            console.error('addModifier > expired modifier');
-            return;
-        }
-
-        // TODO (0) : check for duplicate ?
-
-        this.modifiers.push(modifier);
-        // order by increasing expiration time
-        this.modifiers.sort(function (a, b) { return a.duration - b.duration; });
-    }
-
-    protected applyModifiers() {
-
-        // modifiers are ordered by increasing expiration time
-
-        // TODO (1) : for modAttr[ID]... ?
-        this.modCondSlope = this._condSlope;
-        // FIXME (1) modCondMax ? how to do it with normalized values ?? localMax = 0.9 of globalMax for example ?
-
-        if (this.modifiers.length) {
-            dbg.log('Entity applyModifiers :' + this.modifiers.length);
-
-            let index = 0;
-            for (let modifier of this.modifiers) {
-                if (modifier.originDH + modifier.duration >= this.updateDH) {
-                    // FIXME (1) : apply before removing ? (ex: poison)
-                    // remove modifier
-                    this.fullModified = true;
-                    this.modifiers.splice(index, 1);
-                    // TODO (0) : set updateDH to expiration time ?
-                }
-                else {
-                    modifier.mod.call(this); // modifier.mod(this);
-
-                }
-                index++;
-
-                // modAttr += ... +increment or *ratio ? log cumulables to max ?
-            }
-        }
-    }
+    /*  protected applyModifiers(upToDH: number) {
+  
+          // TODO (1) : for modAttrKind[ID]... ?
+          // FIXME (1) modCondMax ? how to do it with normalized values ?? localMax = 0.9 of globalMax for example ?
+  
+          if (this.attributeModifiers.condModifiers
+              && this.attributeModifiers.condModifiers.length) {
+              dbg.log('Entity apply cond modifiers :' + this.attributeModifiers.condModifiers.length);
+  
+              let condAttr = new LinearAttribute(this._cond, this._condMax, this._condSlope, this._updateDH);
+              condAttr.forwardToNextEvent(this.attributeModifiers.condModifiers, upToDH); 
+          }
+      }  */
 
     toVarDao(): EntityVarOptions { // ~ protected, Persistor friend ! (only used internally or to store partial doc in Persistor)
         return {
@@ -483,7 +883,7 @@ export abstract class EntityBase implements EntityInterface {
             posX: this._posX,
             posY: this._posY,
             theta: this._theta,
-            cond: this._cond,
+            cond: this._cond.currentValue
         }
     }
 
@@ -493,7 +893,8 @@ export abstract class EntityBase implements EntityInterface {
             varAttr: this.toVarDao(),
             classId: this._classId,
             mass: this._mass,
-            condSlope: this._condSlope
+            condSlope: this._cond.baseSlope,
+            attributeModifiers: this._cond.modifierToDao(ModAttrKind.Cond)
         }
     }
 
@@ -571,8 +972,8 @@ export class Furniture extends EntityBase implements FurnitureInterface {
     readonly isFurniture = true
 
     constructor(opt: EntityIdOptions) {
-        super();
-        super.fromOptions(opt);
+        super(opt);
+        //super.fromOptions(opt);
     }
 
     toIdDao(): FurnitureIdDao {
@@ -584,8 +985,7 @@ export class Furniture extends EntityBase implements FurnitureInterface {
     toString() {
         return ' { class:Furniture'
             + ', dt:' + this._updateDH
-            + ', cond:' + this._cond + '/' + this._condMax + '@' + this._condSlope
-            + ', modCondSlope:' + this.modCondSlope
+            + ', cond:' + this._cond.currentValue + '/' + this._cond.baseMaximum + '@' + this._cond.baseSlope
             + ' } ';
     }
 }
@@ -687,6 +1087,7 @@ export interface AgentInterface extends EntityInterface {
     moveWater: number
     moveEarth: number
     moveAir: number
+    attack: Damage
 
     readonly massMax: number
     readonly massSlope: number
@@ -718,6 +1119,7 @@ export class Agent extends EntityBase implements AgentInterface {
     moveWater: number
     moveEarth: number
     moveAir: number
+    attack: Damage
 
     protected _massSlope: Slope
     get massSlope() { return this._massSlope }
@@ -734,7 +1136,7 @@ export class Agent extends EntityBase implements AgentInterface {
     get qtMax() { return this._qtMax }
 
     protected _energy: number
-    get energy() { return this._qt }
+    get energy() { return this._energy }
     set energy(v: number) { if (v !== this._energy) { this._energy = v; this.varModified = true } }
     protected _energySlope: Slope
     protected modEnergySlope: Slope
@@ -744,30 +1146,53 @@ export class Agent extends EntityBase implements AgentInterface {
 
     readonly actions: ActId[] = []
 
-    get updateDH() { return this._updateDH }
-    set updateDH(newUpdateDH: number) {
+    /*  get updateDH() { return this._updateDH }
+      set updateDH(newUpdateDH: number) {
+  
+          // update cond
+          let dt = newUpdateDH - this._updateDH;
+  
+          if (dt < 0) {
+              throw 'Entity.set updateDH > Trying to reverse time. newUpdateDH ' + newUpdateDH + ' < ' + this._updateDH;
+          }
+          else if (dt === 0) {
+              return;
+          }
+  
+          this.varModified = true
+          this._updateDH = newUpdateDH;
+  
+          this.applyModifiers();
+          this._cond = this.getDynNormalValue(dt, this._cond, this._condMax, this.modCondSlope);
+          this._qt = this.getDynNormalValue(dt, this._qt, this._qtMax, this.modQtSlope);
+          this._energy = this.getDynNormalValue(dt, this._energy, this._energyMax, this.modEnergySlope);
+      } */
 
-        // update cond
-        let dt = newUpdateDH - this._updateDH;
-
-        if (dt < 0) {
-            throw 'Entity.set updateDH > Trying to reverse time. newUpdateDH ' + newUpdateDH + ' < ' + this._updateDH;
-        }
-        else if (dt === 0) {
-            return;
-        }
-
-        this.varModified = true
-        this._updateDH = newUpdateDH;
-
-        this.applyModifiers();
-        this._cond = this.getDynNormalValue(dt, this._cond, this._condMax, this.modCondSlope);
-        this._qt = this.getDynNormalValue(dt, this._qt, this._qtMax, this.modQtSlope);
-        this._energy = this.getDynNormalValue(dt, this._energy, this._energyMax, this.modEnergySlope);
-    }
+    // TODO (0) : protected _stabilise
+    /* stabiliseUpTo(newUpdateDH: number): number {
+         let dt = super.stabiliseUpTo(newUpdateDH);
+ 
+         dbg.log('Agent.stabilise > ');
+ 
+         this._qt = this.getDynNormalValue(dt, this._qt, this._qtMax, this.modQtSlope);
+         this._energy = this.getDynNormalValue(dt, this._energy, this._energyMax, this.modEnergySlope);
+         return dt;
+     }*/
 
     constructor(opt: AgentIdOptions) {
-        super();
+        super(opt);
+
+        // overwrite entity default cond slope and mass
+        // TODO (5) : absract entity, concreet furniture ?
+        // this._condSlope = opt.condSlope !== undefined ? opt.condSlope : Defaults.BEING_COND_SLOPE;
+        let condMax = opt.condMax !== undefined ? opt.condMax : Defaults.BEING_COND_MAX;
+        this._cond = new LinearAttribute(
+            opt.varAttr.cond !== undefined ? opt.varAttr.cond : condMax,
+            condMax,
+            opt.condSlope !== undefined ? opt.condSlope : Defaults.BEING_COND_SLOPE,
+            opt.varAttr.updateDH,
+            opt.attributeModifiers
+        );
 
         this.actions.push(ActId.ActMoveTo, ActId.ActTurnTo, ActId.ActPickUp, ActId.ActLayDown);
 
@@ -783,11 +1208,12 @@ export class Agent extends EntityBase implements AgentInterface {
         this.moveWater = opt.moveWater !== undefined ? opt.moveWater : Defaults.MOVE_WATER;
         this.moveEarth = opt.moveEarth !== undefined ? opt.moveEarth : Defaults.MOVE_EARTH;
         this.moveAir = opt.moveAir !== undefined ? opt.moveAir : Defaults.MOVE_AIR;
+        this.attack = opt.attack !== undefined ? opt.attack : Defaults.ATTACK;
         this.stomach = opt.varAttr.stomach !== undefined ? opt.varAttr.stomach : Defaults.BEING_STOMACH;
 
         // TODO (0) : stomach etc...AgentBase
-        // this.applyModifiers();
-        super.fromOptions(opt);
+
+        // super.fromOptions(opt);
     }
 
     toVarDao(): AgentVarOptions {
@@ -796,7 +1222,7 @@ export class Agent extends EntityBase implements AgentInterface {
             posX: this._posX,
             posY: this._posY,
             theta: this._theta,
-            cond: this._cond,
+            cond: this._cond.currentValue,
             qt: this.qt,
             energy: this.energy,
             stomach: this.stomach
@@ -810,7 +1236,7 @@ export class Agent extends EntityBase implements AgentInterface {
             classId: this.entType,
             name: this.name,
             condMax: this.mass,
-            condSlope: this.condSlope,
+            condSlope: this._cond.baseSlope,
             qtMax: this.qtMax,
             qtSlope: this.qtSlope,
             energyMax: this.energyMax,
@@ -820,7 +1246,8 @@ export class Agent extends EntityBase implements AgentInterface {
             moveAir: this.moveAir,
             mass: this.mass,
             massMax: this.massMax,
-            massSlope: this.massSlope
+            massSlope: this.massSlope,
+            attributeModifiers: this._cond.modifierToDao(ModAttrKind.Cond)
         }
     }
 
@@ -837,15 +1264,15 @@ export class Agent extends EntityBase implements AgentInterface {
         return World.AgentFactory(idDao);
     }
 
-    protected applyModifiers() {
-        // modifiers are ordered by increasing expiration time
-
-        // TODO (1) : qtmax, energymax,... => for modAttr[ID]... ?
-        this.modQtSlope = this._qtSlope;
-        this.modEnergySlope = this._energySlope;
-
-        super.applyModifiers();
-    }
+    /*   protected applyModifiers() {
+           // modifiers are ordered by increasing expiration time
+   
+           // TODO (1) : qtmax, energymax,... => for modAttr[ID]... ?
+           this.modQtSlope = this._qtSlope;
+           this.modEnergySlope = this._energySlope;
+   
+           super.applyModifiers();
+       } */
 
     canReceive(_furniture: Furniture) {
         // TODO
@@ -861,20 +1288,19 @@ export class Agent extends EntityBase implements AgentInterface {
         super.asRelativeEntity(observer, relId);
 
         // TODO (2) : modify each attribute f(actor.perception* -(/?) this.dicretion*), get name from observer souvenirs
-        // FIXME (0) : actor is a clone, so cannot use === ; => compareGid() ?
-        if (this.name !== observer.name) {
+        // actor is a clone, so we cannot compare with === ; => compare Gid (of same CId) 
+        if (this.gId.iId !== observer.gId.iId) {
             this.name = '';
         }
     }
 
     toString() {
         return ' { class:Agent'
-            + ' ,name:' + this.name
-            + ' ,dt:' + this._updateDH
-            + ' ,cond:' + this._cond + '/' + this._condMax + '@' + this._condSlope
-            + ' ,modCondSlope:' + this.modCondSlope
-            + ' ,qt:' + this._qt + '/' + this._qtMax + '@' + this._qtSlope
-            + ' ,modCondSlope:' + this.modQtSlope
+            + ', name:' + this.name
+            + ', dt:' + this._updateDH
+            + ', cond:' + this._cond.currentValue + '/' + this._cond.baseMaximum + '@' + this._cond.baseSlope
+            + ', qt:' + this._qt + '/' + this._qtMax + '@' + this._qtSlope
+            + ', modCondSlope:' + this.modQtSlope
             + ' } ';
     }
 }
@@ -896,7 +1322,7 @@ export class Cell implements Target { // TODO (1) : implements EntityContainer
     posX: number
     posY: number
 
-    //	updateDH: number | undefined
+    //	updateDH: number | undefined // TODO (0) : cell updateDH
 
     inventory: FurnitureInterface[] = [] // TODO (0) : this.fullModified
 
@@ -963,7 +1389,7 @@ export class Cell implements Target { // TODO (1) : implements EntityContainer
     canWelcome(entity: EntityInterface) {
 
 
-        if (entity instanceof Agent) { // FIXME (0) : instanceof Interface ? 
+        if (entity instanceof Agent) { // FIXME (1) : instanceof Agent Interface that is not an Agent ? 
             return this.being === undefined; // !(this.being instanceof CoreAgent);
         }
 
@@ -996,12 +1422,6 @@ export class Cell implements Target { // TODO (1) : implements EntityContainer
     getAgent() {
         return this.being;
     }
-
-    /*  getD2A() {
-          // FIXME (0) : abs !! if (this.absRef) ..., or core is always relative ?
-          //let relX = this.absRref.posX-
-          return Math.round(Math.sqrt(this.posX * this.posX + this.posY * this.posY));
-      }  */
 
     getD2A(originX = 0, originY = 0) {
 
@@ -1129,215 +1549,6 @@ export interface TimeRef {
 
 export interface ActorRef {
     actorGId: EntityIdentifier
-}
-
-export interface ZoneDao extends SpaceRef, TimeRef, ActorRef {
-    agents: AgentIdOptions[]
-    furnitures: FurnitureIdDao[]
-    cells: CellDao[]
-}
-
-export interface RelZoneDao extends ZoneDao {   // implements EntityManager
-    actorGId: IndirectEntityIdentifier
-    /*
-    //   defaultTerrainType: CellType
-    // entities: EntityDao[]
-    agents: AgentIdDao[]
-    furnitures: FurnitureIdDao[]
-    cells: CellDao[] */
-}
-
-// class Zone : Actor's viewpoint (business rules)
-export abstract class Zone implements TimeRef, SpaceRef {
-
-    //  updateDH = 0 // TODO (0) :  least , highest ? interval ?
-    actorOriginalUpdateDH: number // cache value for client side only
-    snapshotDH: number
-
-    originX: number // originX and originY ~ const 0 for RelZone
-    originY: number
-
-    actor: AgentInterface
-    actorCell: Cell
-    cellPool: { [index: string]: Cell | undefined } // index : CellIdentifier().toIdString()
-    furniturePool: { [index: string]: FurnitureInterface } // index: FurnitureItemIdentifier
-    agentPool: { [index: string]: AgentInterface } // index: AgentItemIdentifier
-
-    /*   abstract fillMissingCells(): void
-       abstract getCell(targetSelector: CellTargetSelector): CoreCell */
-
-    constructor(zoneDao: ZoneDao) { // needs to set originX and originY before constructor }
-
-        this.snapshotDH = zoneDao.snapshotDH;
-        this.originX = zoneDao.originX ? zoneDao.originX : 0;
-        this.originY = zoneDao.originY ? zoneDao.originY : 0;
-
-        // TODO (0) : updateDH from pools
-        this.cellPool = {}
-        this.furniturePool = {}
-        this.agentPool = {}
-
-        let stringCellId: string;
-        let cell: Cell | undefined;
-
-        for (let i = 0; i < zoneDao.cells.length; i++) {
-
-            let cellGist = zoneDao.cells[i];
-            stringCellId = new CellIdentifier(cellGist.posX, cellGist.posY).toIdString();
-            this.cellPool[stringCellId] = World.CellFactory(cellGist);
-        }
-
-        // fill missing is used to filter furnitures and agents on distance (radius
-        this.fillMissingCells();
-
-        // Fill with agents
-        for (let i = 0; i < zoneDao.agents.length; i++) {
-
-            let agentDao: AgentIdOptions = zoneDao.agents[i];
-            stringCellId = new CellIdentifier(agentDao.varAttr.posX, agentDao.varAttr.posY).toIdString();
-
-            cell = this.cellPool[stringCellId];
-
-            if (cell) {
-
-                let agent = World.AgentFactory(agentDao);
-                this.agentPool[agent.gId.iId] = agent;
-                cell.setBeing(agent);
-
-                if (agent.gId.iId === zoneDao.actorGId.iId) {
-                    this.actorCell = cell;
-                    this.actor = agent;
-                }
-            }
-            else {
-                // TODO (1) : do not create all cells, but dynamicaly create required ones ? radius pb.
-                dbg.log('skip agent not in circular zone');
-            }
-        }
-
-        console.assert(this.actor instanceof Agent, 'CoreZone.init > Invalid actor in gist ' + zoneDao.actorGId); // The actor should be in zonegist.agents
-        this.actorOriginalUpdateDH = this.actor.updateDH;
-
-        // Fill with furnitures
-        for (let i = 0; i < zoneDao.furnitures.length; i++) {
-
-            let furnitureDao: FurnitureIdDao = zoneDao.furnitures[i];
-            stringCellId = new CellIdentifier(furnitureDao.varAttr.posX, furnitureDao.varAttr.posY).toIdString();
-
-            let cell = this.cellPool[stringCellId];
-
-            if (cell) {
-                let furniture = World.FurnitureFactory(furnitureDao);
-                this.furniturePool[furniture.gId.iId] = furniture;
-                // TODO : (1) entity.parentEntity.addToInventory(entity);
-                cell.pushFurniture(furniture);
-            }
-            else {
-                // TODO (1) : do not create all cells, but dynamicaly create required ones ? radius pb.
-                dbg.log('skip agent not in circular zone');
-            }
-        }
-
-        // TODO (0) : this.updateDH = cell.upadateDH ... ;
-
-        // TODO (2) : Ephemeris, Sun position for directional light
-    }
-
-    // TODO (1) : do not fill but get cells dynamicaly ?
-
-    fillMissingCells() {
-        // Fill missing cells with default terrain
-
-        let viewRadius = Constants.MAX_VISION_RADIUS;
-        let cell: Cell | undefined;
-        let cellId: string;
-
-        for (let ix = -viewRadius; ix <= viewRadius; ix++) {
-            for (let iy = -viewRadius; iy <= viewRadius; iy++) {
-
-                if (Math.sqrt(ix * ix + iy * iy) <= viewRadius) {
-
-                    cellId = new CellIdentifier(this.originX + ix, this.originY + iy).toIdString();
-                    cell = this.cellPool[cellId];
-                    if (!cell) {
-                        cell = World.CellFactory({ cellType: World.defaultCellType, posX: this.originX + ix, posY: this.originY + iy });
-                        this.cellPool[cellId] = cell;
-                    }
-                }
-            }
-        }
-    }
-
-    // abstract getTarget(absId: AbsIdentifier): Target
-    /*   getTarget(absId: AbsIdentifier): Target {
-   
-           let target: Target;
-   
-           if (absId.cId === CollectionId.Cell) {
-               target = this.getCell(absId.iId); // FIXME : receive relcellid !!
-           }
-           else { // if (cmd.targetSelector.collId === CollectionId.Furniture || cmd.targetSelector.collId === CollectionId.Agent ) {
-               target = this.getEntity(absId.iId);
-           }
-   
-           // TODO (1) : getCOD 
-   
-           return target;
-   
-       } */
-
-    getCellFromRelPos(relX: number, relY: number): Cell {
-
-        let cellIdentifier = new CellIdentifier(relX + this.originX, relY + this.originY);
-        let absCellIdentifier = cellIdentifier.toIdString();
-
-        let cell = this.cellPool[absCellIdentifier];
-
-        if (cell) {
-            return cell;
-        }
-
-        throw 'cell not found ' + relX + ' ' + relY;
-    }
-
-    getEntity(cId: CollectionId, iId: ItemIdentifier): EntityInterface {
-
-        let entity: EntityInterface | undefined;
-
-        if (cId === CollectionId.Furniture) {
-            entity = this.furniturePool[iId];
-        }
-        else if (cId === CollectionId.Agent) {
-            entity = this.agentPool[iId];
-        }
-
-        if (entity === undefined) {
-            throw 'entity no found cId:' + cId + ' iId:' + iId;
-        }
-
-        return entity;
-    }
-}
-
-// Relative Zone
-export class RelZone extends Zone {
-
-    /*   getTarget(absId: AbsIdentifier): Target {
-  
-         let target : Target;
-  
-          if (absId.cId === CollectionId.Cell) {
-                     target = this.getCell(absId.iId); // FIXME : receive relcellid !!
-                 }
-                 else { // if (cmd.targetSelector.collId === CollectionId.Furniture || cmd.targetSelector.collId === CollectionId.Agent ) {
-                     target = this.getEntity(absId.iId);
-                 }  
-  
-                 // TODO (1) : getCOD 
-  
-         return target;
-  
-     } */
 }
 
 // FIXME (1) : separate agentConstructor and furnitureConstructor or make a common entityConstructor ?

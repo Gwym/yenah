@@ -63,11 +63,17 @@ body {
 }
 
 #info_box > p {
-    border: 1px solid #ffff44;
-    background-color: #ffffdd;
+    z-index: 999;
+    border-color: #f0c36d;
+    background-color: #f9edbe;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    color: #222;
     padding: 2px;
     margin: 1px;
     border-radius: 5px;
+    font-size: 80%;
+    font-weight: bold;
+    text-align: center;
     cursor: default;
 }
 

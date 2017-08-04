@@ -11,6 +11,7 @@ let outFilename = './frontend/js/shared.gen.ts';
 let inFiles = [
     './src/yenah/shared/action.ts', // Action must be before concept (defines the concept of Actions)
     './src/yenah/shared/concept.ts',
+    './src/yenah/shared/zone.ts',
     './src/services/shared/messaging.ts',
     './src/yenah/shared/messaging.ts']; 
 // 'persistor', 'tests' // TODO (0) : separate client, server and shared tests and persistence
@@ -23,8 +24,9 @@ for (let inFile of inFiles) {
     let inFilename = path.normalize(inFile);
     let inContent = fs.readFileSync(inFilename, 'utf8');
     inContent = inContent.replace(/export /g, '') + "\n\n";
-    // FIXME (0) : add use of "" instaed of '' ;  final code line ';'
-    inContent = inContent.replace(/import {[^}]*} from '([^']*)'/g, "// import '$1'");
+    // TODO (1) : group use of "" and ''
+    inContent = inContent.replace(/import {[^}]*} from '([^']*)';*/g, "// import '$1'");
+    inContent = inContent.replace(/import {[^}]*} from "([^"]*)";*/g, "// import '$1'");
 
     outContent += "\n// " + inFilename + "\n" + inContent ;
     

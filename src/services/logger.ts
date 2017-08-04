@@ -59,8 +59,8 @@ export var dbg: Logger = {
   error(a: any) {
     console.error(trace(a, LoggerParts.None));
   },
-  attr(s: string) {
-    console.log(s);
+  attr(_s: string) {
+    // console.log(s);
   },
   admin(s: string, parts?: LoggerParts) {
     console.log(trace(s, parts));

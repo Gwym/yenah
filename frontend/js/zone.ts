@@ -87,19 +87,16 @@ class Zone3D extends THREE.Scene {
 	cursorTileSelector: THREE.LineSegments
 
 	constructor(zone: RelZone) {
-		super();
+		super()
 
-		this.zone = zone;
+		this.zone = zone
 
 		let pointerCoord = false; // Tile selector as cube or arrowHelper TODO : (5) user options
 
-		for (let stringCellId in zone.cellPool) {
-			if (zone.cellPool.hasOwnProperty(stringCellId)) {
-				let tile = WorldUI.TileFactory(zone, <Cell>zone.cellPool[stringCellId]);
-				//this.tilePool[stringCellId] 
-				this.intersectors.push(tile);
-				this.add(tile);
-			}
+		for (let cell of zone.cellPool.values()) {
+			let tile = WorldUI.TileFactory(zone, cell)
+			this.intersectors.push(tile)
+			this.add(tile)
 		}
 
 		// TODO (2) : Fill missing cells with default terrain or populate all cells ins zone ?
@@ -183,7 +180,7 @@ class Zone3D extends THREE.Scene {
 		this.add(new THREE.ArrowHelper(
 			new THREE.Vector3(0, 0, 1),
 			new THREE.Vector3(0, 0, 0),
-			10, 0x0000ff)); 
+			10, 0x0000ff));
 
 		// Lights // TODO : (4) sun position, ephemeris, lamps...
 		var ambientLight = new THREE.AmbientLight(0xa0a0a0);
@@ -203,11 +200,8 @@ class Zone3D extends THREE.Scene {
 		this.add(entity);
 	}
 
-	fillEntities(pool: { [index: string]: EntityInterface }) {
-		for (let entityId in pool) {
-			if (pool.hasOwnProperty(entityId)) {
-
-				let entity = pool[entityId];
+	fillEntities(pool: Map<string, EntityInterface>) {
+		for (let entity of pool.values()) {
 
 				// TODO : (1) entity.parentEntity.addEntity(entity);
 				//	stringCellId = relPosToId(entity.relX, entity.relY);
@@ -227,7 +221,7 @@ class Zone3D extends THREE.Scene {
 
 					model.geometry.computeBoundingBox();
 					model.position.set(entity.posX * Tile.SIZE, entity.posY * Tile.SIZE, -model.geometry.boundingBox.min.y * scale);
-					model.rotateY((2 - entity.theta) * Math.PI / 4); 
+					model.rotateY((2 - entity.theta) * Math.PI / 4);
 					let bb = model.geometry.boundingBox;
 					let po = model.position;
 					dbg.log(ConceptClass[entity.entType] + ' : ' + po.x + ',' + po.y + ',' + po.z
@@ -235,8 +229,8 @@ class Zone3D extends THREE.Scene {
 					model.name = ConceptClass[entity.entType]; // three.js scene debug
 
 					this.addEntity3D(model);
-				});
-			}
+				})
+			
 		}
 	}
 

@@ -5,8 +5,8 @@ import { CoreAction, ActionReport } from './shared/action'
 import {
     Constants, EntityIdentifier, AgentIdentifier, UserItemIdentifier, AgentItemIdentifier, TransientIdentifier,
     IndirectionItemIdentifier, IndirectEntityIdentifier, ActId, World,
-    AgentOptions, EntityOptions, AgentIdRelOptions, PilotableAbsIdDao, PilotableTransientIdDao, ZoneDao, CellDao, RelZoneDao, FurnitureIdDao, AgentIdOptions,
-    EntityBase, Agent, Furniture, Cell, Zone, Target, EntityInterface
+    AgentOptions, EntityOptions, AgentIdRelOptions, PilotableAbsIdDao, PilotableTransientIdDao, CellDao, FurnitureIdDao, AgentIdOptions,
+    EntityBase, Agent, Furniture, Target, EntityInterface
 } from './shared/concept';
 import { UserOptions, MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage, ErrMsg } from '../services/shared/messaging'
 import {
@@ -17,10 +17,11 @@ import {
     QueryFilter, AdminRequest
 } from './shared/messaging';
 import {
-    AsyncPersistor, IndirectionDictionary, IndirectionSaveDao, IndirectionIdDao, SaveZoneDao, SaveByIdDao, SavePosDao, SaveByIdFullDao, SaveByIdVarDao
+    AsyncPersistor, IndirectionDictionary, IndirectionSaveDao, IndirectionIdDao, SaveZoneDao, SaveByIdDao, SavePosDao, SaveByIdFullDao, SaveByIdVarDao, BulkSaveResult
 } from "./persistor";
 
 import { AdminDispatcher } from "./admin";
+import { ZoneDao, Zone, RelZoneDao } from "./shared/zone";
 
 export class TransactionManager {
     // TODO (1) : TransactionManager : memory reads watcher ?
@@ -75,34 +76,25 @@ export class AbsZone extends Zone {
         let absActor = this.actor.clone(); // ~ clone actor, as he will be modified by self observation
         let absActorSgid = absActor.gId.toIdString();
 
-        for (let furnitureId in this.furniturePool) {
-            if (this.furniturePool.hasOwnProperty(furnitureId)) {
-                let furniture = this.furniturePool[furnitureId];
-                let absId = furniture.gId.toIdString();
-                let relIdDao = absToRel[absId];
-                if (!relIdDao) { throw 'absZoneToRelZoneDao > No indirection for furniture ' + absId }
-                furniture.asRelativeEntity(absActor, relIdDao.indId);
-                relFurnitures.push(furniture.toIdDao());
-            }
+        for (let furniture of this.furniturePool.values()) {
+            let absId = furniture.gId.toIdString();
+            let relIdDao = absToRel[absId];
+            if (!relIdDao) { throw 'absZoneToRelZoneDao > No indirection for furniture ' + absId }
+            furniture.asRelativeEntity(absActor, relIdDao.indId);
+            relFurnitures.push(furniture.toIdDao());
         }
 
-        for (let agentId in this.agentPool) {
-            if (this.agentPool.hasOwnProperty(agentId)) {
-                let agent = this.agentPool[agentId];
-                let absId = agent.gId.toIdString();
-                let relIdDao = absToRel[absId];
-                if (!relIdDao) { throw 'absZoneToRelZoneDao > No indirection for agent ' + absId }
-                agent.asRelativeEntity(absActor, relIdDao.indId);
-                relAgents.push(agent.toIdDao());
-            }
+        for (let agent of this.agentPool.values()) {
+            let absId = agent.gId.toIdString();
+            let relIdDao = absToRel[absId];
+            if (!relIdDao) { throw 'absZoneToRelZoneDao > No indirection for agent ' + absId }
+            agent.asRelativeEntity(absActor, relIdDao.indId);
+            relAgents.push(agent.toIdDao());
         }
 
-        for (let cellPosId in this.cellPool) {
-            if (this.cellPool.hasOwnProperty(cellPosId)) {
-                let cell = <Cell>this.cellPool[cellPosId];
-                cell.asRelativeEntity(absActor);
-                relCells.push(cell.toDao());
-            }
+        for (let cell of this.cellPool.values()) {
+            cell.asRelativeEntity(absActor);
+            relCells.push(cell.toDao());
         }
 
         let relActor = absToRel[absActorSgid];
@@ -126,30 +118,25 @@ export class AbsZone extends Zone {
 
         // TODO (2) : for [furniturePool, agentPool]
 
-        for (let furnitureId in this.furniturePool) {
-            if (this.furniturePool.hasOwnProperty(furnitureId)) {
-                let furniture = this.furniturePool[furnitureId];
-                let absId = furniture.gId;
-                absIdentifiers.push({
-                    uId: userIId,
-                    oId: this.actor.gId.iId,
-                    tCId: absId.cId,
-                    tIId: absId.iId
-                });
-            }
+        for (let furniture of this.furniturePool.values()) {
+            let absId = furniture.gId;
+            absIdentifiers.push({
+                uId: userIId,
+                oId: this.actor.gId.iId,
+                tCId: absId.cId,
+                tIId: absId.iId
+            });
         }
 
-        for (let agentId in this.agentPool) {
-            if (this.agentPool.hasOwnProperty(agentId)) {
-                let agent = this.agentPool[agentId];
-                let absId = agent.gId;
-                absIdentifiers.push({
-                    uId: userIId,
-                    oId: this.actor.gId.iId,
-                    tCId: absId.cId,
-                    tIId: absId.iId
-                });
-            }
+        for (let agent of this.agentPool.values()) {
+            let absId = agent.gId;
+            absIdentifiers.push({
+                uId: userIId,
+                oId: this.actor.gId.iId,
+                tCId: absId.cId,
+                tIId: absId.iId
+            });
+
         }
         return absIdentifiers;
 
@@ -163,52 +150,46 @@ export class AbsZone extends Zone {
         let furnitures: SaveByIdDao[] = [];
         let cells: SavePosDao[] = [];
 
-        // TODO (2) : for furniturePool, agentPool ...
-        let entityPool: { [index: string]: EntityInterface } = this.furniturePool;
+        // TODO (2) : for [furniturePool, agentPool ...]
+        let entityPool: Map<string, EntityInterface> = this.furniturePool; // { [index: string]: EntityInterface }
         let daoPool = furnitures;
 
-        for (let entityId in entityPool) {
-            if (entityPool.hasOwnProperty(entityId)) {
-                let entity = entityPool[entityId];
-                if (entity.varModified) {
-                    daoPool.push(<SaveByIdVarDao>{
-                        iId: entity.gId.iId,
-                        varAttr: entity.toVarDao()
-                    });
-                }
-                else if (entity.fullModified) {
-                    daoPool.push(<SaveByIdFullDao>{
-                        iId: entity.gId.iId,
-                        full: entity.toDao()
-                    });
-                }
-                else {
-                    // dbg.log('Skip unmodified furniture ' + entity);
-                }
+        for (let entity of entityPool.values()) {
+            if (entity.varModified) {
+                daoPool.push(<SaveByIdVarDao>{
+                    iId: entity.gId.iId,
+                    varAttr: entity.toVarDao()
+                });
+            }
+            else if (entity.fullModified) {
+                daoPool.push(<SaveByIdFullDao>{
+                    iId: entity.gId.iId,
+                    full: entity.toDao()
+                });
+            }
+            else {
+                // dbg.log('Skip unmodified furniture ' + entity);
             }
         }
 
         entityPool = this.agentPool;
         daoPool = agents;
 
-        for (let entityId in entityPool) {
-            if (entityPool.hasOwnProperty(entityId)) {
-                let entity = entityPool[entityId];
-                if (entity.varModified) {
-                    daoPool.push(<SaveByIdVarDao>{
-                        iId: entity.gId.iId,
-                        varAttr: entity.toVarDao()
-                    });
-                }
-                else if (entity.fullModified) {
-                    daoPool.push(<SaveByIdFullDao>{
-                        iId: entity.gId.iId,
-                        full: entity.toDao()
-                    });
-                }
-                else {
-                    // dbg.log('Skip unmodified agent ' + entity);
-                }
+        for (let entity of entityPool.values()) {
+            if (entity.varModified) {
+                daoPool.push(<SaveByIdVarDao>{
+                    iId: entity.gId.iId,
+                    varAttr: entity.toVarDao()
+                });
+            }
+            else if (entity.fullModified) {
+                daoPool.push(<SaveByIdFullDao>{
+                    iId: entity.gId.iId,
+                    full: entity.toDao()
+                });
+            }
+            else {
+                // dbg.log('Skip unmodified agent ' + entity);
             }
         }
 
@@ -220,20 +201,17 @@ export class AbsZone extends Zone {
             saveDao.furnitures = furnitures;
         }
 
-        for (let cellId in this.cellPool) {
-            if (this.cellPool.hasOwnProperty(cellId)) {
-                let cell = <Cell>this.cellPool[cellId];
-                if (cell.fullModified) {
-                    dbg.log('Store modified cell ' + cell);
-                    cells.push(<SavePosDao>{
-                        absPosX: cell.posX,
-                        absPosY: cell.posY,
-                        gist: cell.toDao()
-                    });
-                }
-                else {
-                    // dbg.log('toSaveDao > Skip unmodified cell ' + cell);
-                }
+        for (let cell of this.cellPool.values()) {
+            if (cell.fullModified) {
+                dbg.log('Store modified cell ' + cell);
+                cells.push(<SavePosDao>{
+                    absPosX: cell.posX,
+                    absPosY: cell.posY,
+                    gist: cell.toDao()
+                });
+            }
+            else {
+                // dbg.log('toSaveDao > Skip unmodified cell ' + cell);
             }
         }
 
@@ -472,7 +450,8 @@ export class ServerEngine extends Dispatcher {
 
 
                     // FIXME (1) : as we prune for already piloted, there may be less pilotable than required => loop till wanted count
-                    // FIXME (0) : pilotable may not be stable => load and stabilize()
+                    // FIXME (1) : pilotable may not be stable => load and stabilize()
+                    // TODO (1) : project id db or filter attributes for "pilotable view" 
 
                     // convert abs _id to reliId 
                     let transPilotableList = user.pilotableAbsToTransient(absPilotableList)
@@ -558,23 +537,26 @@ export class ServerEngine extends Dispatcher {
         let viewradius = Constants.MAX_VISION_RADIUS;
         let actorGid = wsSession.getActorAbsIdentifierFromRelId(actorIndirectId);
         // We do not use the cached piloted dao, as actor dao may have changed (moveact, death, ...)
-        // TODO (0) : death management ; here  (dao -> actor + check) ? in pilotable ? in getZone. Stabilise befoire sending ?
+        // TODO (0) : death management ; here  (dao -> actor + check) ? in pilotable ? in getZone. Stabilise before sending ?
         // option "fantôme" => risque de remplir la base
         // option remplacement => risque de collisions
 
         return new Promise<AbsZone>((resolve, reject) => {
 
+            let snapshotDH = this.db.getNow();
+
             this.db.getActorPosition(actorGid.iId)
                 .then((actorPosition) => {
                     dbg.log('preloadZone > actorIndirectId: ' + actorIndirectId + ' x:' + actorPosition.originX + ' y: ' + actorPosition.originY, LoggerParts.Filename);
-                    return this.db.getZoneFromLocation(actorPosition.originX, actorPosition.originY, viewradius, actorGid);
+                    return this.db.getZoneFromLocation(actorPosition.originX, actorPosition.originY, viewradius, actorGid, snapshotDH);
                 })
-                .then((az) => {
+                .then((azDao) => {
+                    let az = new AbsZone(azDao);
                     resolve(az);
                 })
-               .catch((e) => {
-                   dbg.error(e);
-                   reject(e) 
+                .catch((e) => {
+                    dbg.error(e);
+                    reject(e)
                 }) // catch by upper level
         })
     }
@@ -595,6 +577,18 @@ export class ServerEngine extends Dispatcher {
                     + ' th:' + absZone.actor.theta, LoggerParts.Filename);
 
                 // TODO (0) : stabilize Zone (eg. apply states)  ?
+                // TODO (1) : "Recovery style" https://developers.google.com/web/fundamentals/getting-started/primers/promises
+                // return checkZoneStability() reject -> save ?
+                if (!absZone.isStableUpTo(absZone.snapshotDH)) {
+                    absZone.stabiliseAt(absZone.snapshotDH);
+                    return this.db.saveZoneDao(absZone.toSaveDao());
+                } else {
+                    return new Promise<BulkSaveResult[]>((resolve) => { resolve([]) });
+                }
+            })
+            .then((result) => {
+
+                dbg.log('STEP SAVING : ' + result);
 
                 return this.db.memoriseIndirections(absZone.getIndirectionsSaveDao(user.userOptions.iId));
             })
@@ -629,7 +623,7 @@ export class ServerEngine extends Dispatcher {
             .catch((e) => {
                 dbg.error(e);
                 if (e.type) {
-                    user.send(e); 
+                    user.send(e);
                 }
                 else {
                     // TODO (1) : type error, i18n
@@ -667,10 +661,13 @@ export class ServerEngine extends Dispatcher {
                     throw 'performAction > actor not found from rel actorId ' + cmd.actorId;
                 }
 
-                // Note : this check should be useless, and we do not check updateDH for each item in zone because of "4D collision detection"
+                // TODO (1)  : remove, this check should be useless, and we do not check updateDH for each item in zone because of "4D collision detection"
+                // and push
                 if (cmd.expectedActorDH !== absZone.actor.updateDH) {
                     throw 'CoreAction > unsync : updateDH expected: ' + cmd.expectedActorDH + ' current:' + absZone.actor.updateDH;
                 }
+
+                absZone.stabiliseAt(absZone.snapshotDH);
 
                 // Get action target
                 let target: Target;
@@ -697,17 +694,25 @@ export class ServerEngine extends Dispatcher {
 
                 let action: CoreAction = World.ActionFactory(cmd.actId, absZone, target);
 
-                let updateDH = this.db.getNow(); // TODO (1) : now "server now", or now "client read now" ?
-                // TODO (0) : for any in zone updateDH = now
-                dbg.log('now: ' + updateDH);
-
                 let actCtx: ActionReport = action.check(new ActionReport());
-                dbg.log(actCtx);
-                action.doAction(new ActionReport());
+                if (actCtx.fails.length) {
+                    console.error(actCtx);
+                    throw (ErrMsg.ServerError); // TODO (0) : ErrMsg.ZoneChanged ? InvalidAction ? (should have been avoided on client side !)
+                }
+                else {
+                    actCtx = action.doAction(new ActionReport());
+                    dbg.log(actCtx);
 
-                return this.db.saveZoneDao(absZone.toSaveDao());
+                    // TODO (0) : death management is done after each atomic action ? or on read ?
+                    if (!absZone.isStableUpTo(absZone.snapshotDH)) {
+                        dbg.log('TODO death management');
+                        absZone.stabiliseAt(absZone.snapshotDH);
+                    }
 
-                // TODO (1) : report, souvenirs
+                    return this.db.saveZoneDao(absZone.toSaveDao());
+
+                    // TODO (1) : report, souvenirs
+                }
             })
             .then((writeResults) => {
                 // TODO (1) : check write ok

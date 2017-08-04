@@ -13,7 +13,7 @@ import {
     QueryFilter, AdminInformations
 } from './shared/messaging'
 import {
-    AbsEntityIdentifier, TransactionManager, AbsZone, ZoneAbsDao, FurnitureIdAbsDao, AgentIdAbsDao,
+    AbsEntityIdentifier, TransactionManager, ZoneAbsDao, FurnitureIdAbsDao, AgentIdAbsDao,
     PilotedRelToAbsDictionary, AbsAgentIdentifier, YeanhUserSession
 } from './engine'
 import {
@@ -574,7 +574,7 @@ export class MongoPersistor extends AsyncPersistor {
     // TODO (0) : extract zone creation from db,
     // step 1 : get cells, prune on visibility
     // step 2 : items, buildings, agents within limits, try to add to remaining cells and prune on visibility
-    getZoneFromLocation(originX: number, originY: number, radius: number, actorId: AbsEntityIdentifier): Promise<AbsZone> {
+    getZoneFromLocation(originX: number, originY: number, radius: number, actorId: AbsEntityIdentifier, snapshotDH: number): Promise<ZoneAbsDao> {
 
         // https://docs.mongodb.com/v2.2/core/read-operations/#subdocuments
 
@@ -590,17 +590,13 @@ export class MongoPersistor extends AsyncPersistor {
 
         dbg.log('actorId:' + actorId + ' query : ' + JSON.stringify(query));
 
-        return new Promise<AbsZone>((resolve, reject) => {
+        return new Promise<ZoneAbsDao>((resolve, reject) => {
 
             this.furnitures.find(query).toArray() // TODO (2) : , { fields: Projections.MongoFurnitureIdDao }
                 .then((resFurnitures: MongoFurnitureIdDao[]) => {
-                    // Convert _id to AbsIdentifier
+                    // Convert Mongo _id to AbsIdentifier { cId: CollectionId.Furniture, iId: furniture._id.toHexString() } 
                     for (let furniture of resFurnitures) {
                         (<FurnitureIdAbsDao><any>furniture).gId = new AbsEntityIdentifier(CollectionId.Furniture, furniture._id.toHexString());
-                        /*{
-                            cId: CollectionId.Furniture,
-                            iId: furniture._id.toHexString() 
-                        } */
                         delete furniture._id;
                         furnitures.push(<FurnitureIdAbsDao><any>furniture);
                     }
@@ -609,13 +605,9 @@ export class MongoPersistor extends AsyncPersistor {
                     return this.agents.find(query).toArray(); //  TODO (2) : , { fields: Projections.MongoAgentIdDao }
                 })
                 .then((resAgents: MongoAgentIdDao[]) => {
-                    // Convert _id to AbsIdentifier
+                    // Convert Mongo _id to AbsIdentifier { cId: CollectionId.Agent, iId: agent._id.toHexString() }
                     for (let agent of resAgents) {
                         (<AgentIdAbsDao><any>agent).gId = new AbsAgentIdentifier(agent._id.toHexString());
-                        /*{
-                            cId: CollectionId.Agent,
-                            iId: agent._id.toHexString() 
-                        }*/
                         delete agent._id;
                         agents.push(<AgentIdAbsDao><any>agent);
                     }
@@ -623,11 +615,11 @@ export class MongoPersistor extends AsyncPersistor {
 
                     return this.cells.find(query).toArray(); //  TODO (2) : , { fields: Projections.CellDao }
                 })
-                .then((resCells: CellDao[]) => { // === MongoCellIdDao (_id is not used in cells) 
+                .then((resCells: CellDao[]) => { // === MongoCellIdDao (Mongo _id is not used in cells) 
                     console.log('resCells : ' + resCells.length);
 
                     let ZoneDao: ZoneAbsDao = {
-                        snapshotDH: this.getNow(),
+                        snapshotDH: snapshotDH,
                         actorGId: actorId,
                         originX: originX,
                         originY: originY,
@@ -636,7 +628,7 @@ export class MongoPersistor extends AsyncPersistor {
                         furnitures: furnitures,
                         cells: resCells
                     };
-                    resolve(new AbsZone(ZoneDao));
+                    resolve(ZoneDao);
                 })
                 .catch((e: any) => { reject(e) });
         });

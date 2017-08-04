@@ -311,8 +311,8 @@ class ActorCanvasCard extends CanvasCard {
             // TODO (0) : actor.now = current_time ??
 
             this.actorName.text = this.zone3D.zone.actor.name;
-            let cond = actor.cond;
-            this.actorCond.text = i18n.conds_titles.cond(actor.cond, actor.condMax, actor.condSlope);
+            let cond = actor.getModifiedCond();
+            this.actorCond.text = i18n.conds_titles.cond(actor.cond, cond.maximum, cond.slope);
             this.actorQt.text = i18n.conds_titles.qt(actor.qt, actor.qtMax, actor.qtSlope);
             this.actorEnergy.text = i18n.conds_titles.energy(actor.energy, actor.energyMax, actor.energySlope);
             this.actorMoves.text = i18n.characs.move_earth + ' ' + actor.moveEarth

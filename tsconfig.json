@@ -62,6 +62,7 @@
         "src/configuration.ts",
         "src/yenah/shared/messaging.ts",
         "src/yenah/shared/concept.ts",
+        "src/yenah/shared/zone.ts",
         "src/yenah/shared/action.ts",
         "src/yenah/persistor.ts",
         "src/yenah/db.ts",

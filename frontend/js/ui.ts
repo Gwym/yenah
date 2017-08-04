@@ -312,9 +312,10 @@ class ActorHtmlCard extends HtmlCard {
         if (this.zone3D) {
             let actor = this.zone3D.zone.actor;
 
-            actor.updateDH = now; // FIXME (0) : now = client now (dynamic) or server  zone.snapshotDH (static) ?
+            actor.stabiliseAt(now); // FIXME (0) : now = client now (dynamic) or server  zone.snapshotDH (static) ?
             this.actorName.textContent = actor.name + ' ' + new Date(actor.updateDH) + ' th:' + actor.theta ;
-            this.actorCond.textContent = i18n.conds_titles.cond(actor.cond, actor.condMax, actor.condSlope);
+            let cond = actor.getModifiedCond()
+            this.actorCond.textContent = i18n.conds_titles.cond(actor.cond, cond.maximum, cond.slope);
             this.actorQt.textContent = i18n.conds_titles.qt(actor.qt, actor.qtMax, actor.qtSlope);
             this.actorEnergy.textContent = i18n.conds_titles.energy(actor.energy, actor.energyMax, actor.energySlope);
             this.actorMoves.textContent = i18n.characs.move_earth + ' ' + actor.moveEarth
@@ -330,7 +331,7 @@ class ActorHtmlCard extends HtmlCard {
         this.zone3D = zone3D;
         if (zone3D) {
             // this.actionsViewer.setTile(zone3D.actorTile);
-            this.actionsViewer.setTarget(zone3D.zone, zone3D.zone.actorCell);
+            // this.actionsViewer.setTarget(zone3D.zone, zone3D.zone.actorCell);
             this.update(Date.now());
             this.container.style.visibility = 'visible';
         }

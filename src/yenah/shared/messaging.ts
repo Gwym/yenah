@@ -2,9 +2,10 @@
 
 import { MessageType, c2s_ChannelMessage, s2c_ChannelMessage } from '../../services/shared/messaging'
 import { 
-    ActId, IndirectionItemIdentifier, RelZoneDao, 
+    ActId, IndirectionItemIdentifier, 
     AgentIdRelOptions, PilotableTransientIdDao, TransientIdentifier 
 } from './concept'
+import { RelZoneDao } from "./zone";
 
 export interface PilotRequest extends c2s_ChannelMessage {
     type: MessageType.ReqPilot

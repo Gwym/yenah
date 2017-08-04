@@ -1,5 +1,6 @@
 import { dbg } from '../../services/logger'
-import { Constants, ActId, FailId, EntityInterface, FurnitureInterface, AgentInterface, Cell, Zone, Target } from './concept'
+import { Constants, ActId, FailId, EntityInterface, FurnitureInterface, AgentInterface, Cell, Target, Damage } from './concept'
+import { Zone } from "./zone";
 
 interface Costs {
     qt: number,
@@ -366,6 +367,70 @@ abstract class ActOnAgent extends CoreAction {
 
 
         return false;
+    }
+}
+
+// TODO (5) : pseudo action : "attack" = "destroy" (building) = "break" (furniture)
+export class ActAttack extends ActOnAgent {
+
+    checkCanAttack() {
+        // TODO (0) : at least of attack must be > 0
+        return true;
+    }
+
+    check(ctx: ActionReport): ActionReport {
+
+        // TODO (0) : ranged attack in same act or different ?
+        this.checkRangeIs1(ctx) &&
+            this.checkCanAttack();
+
+        return ctx;
+    }
+
+    doAction(ctx: ActionReport): ActionReport {
+
+        let actor = this.zone.actor;
+
+        let costs = this.getCosts()
+        actor.qt = actor.qt - costs.qt;
+        actor.energy = actor.energy - costs.energy;
+
+        // TODO (5) : passive reaction, damage to weapon => other action on upper level ?
+        // TODO (3) : clone on solidity and damages ?
+        // let damages: Damage = actor.attack.clone();
+
+        let totalDamages = 0;
+        let tDefense = this.target.solidity;
+        let damage: number;
+        let defense : number | undefined;
+        let damageMap = new Damage();
+        for (var [k, val] of actor.attack) {
+            dbg.log(k + " = " + val);
+            defense = tDefense.get(k);
+            if (defense === undefined) {
+                defense = 0;
+            }
+            damage = Math.max(val - defense, 0);
+            damageMap.set(k, damage);
+            totalDamages += damage;
+        }
+        /*let damages: Damage = {
+            cut: aattack.cut - tdef.cut,
+            blunt: 0,
+            fire: 0,
+            acid: 0,
+            elec: 0,
+            poison: 0
+        };*/
+
+
+       //this.target.hurt();
+       this.target.cond -= totalDamages;
+
+        ctx.costs.qt += costs.qt;
+        ctx.costs.energy += costs.energy;
+
+        return ctx;
     }
 }
 
