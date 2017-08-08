@@ -1,6 +1,6 @@
 
 // CANVAS UI DEPRECATED, USE HTML UI (scene.ts)
-
+/*
 interface relativeCanvasElement {
 
     // new(context: CanvasRenderingContext2D): relativeCanvasElement;
@@ -75,7 +75,7 @@ class CanvasButton implements absoluteCanvasElement {
     draw(now: number) {
 
         let costs = { qt: 0, energy: 0 };
-        let actCtx = this.actView.action.check(new ActionReport( true, [], costs));
+        let actCtx = this.actView.action.check(new ActionReport(true, [], costs));
 
         let ctx = this.context;
         let help = i18n.acts_costs(costs.qt, costs.energy);
@@ -196,7 +196,7 @@ class CanvasButtonSet {
 
         for (let b of this.buttons) {
 
-            /* let act = b.action;
+             let act = b.action;
             if (act.check()) {
                 console.log('TODO: BUILD SERVER MESSAGE');
                 // action.message = action.buildMessage(zone.iid, target);
@@ -209,7 +209,7 @@ class CanvasButtonSet {
             }
             else {
                 console.log('createActionButton > action set ' + act.caption);
-            } */
+            } 
             b.draw(now);
         }
     }
@@ -308,13 +308,13 @@ class ActorCanvasCard extends CanvasCard {
 
             let actor = this.zone3D.zone.actor;
 
-            // TODO (0) : actor.now = current_time ??
-
             this.actorName.text = this.zone3D.zone.actor.name;
-            let cond = actor.getModifiedCond();
-            this.actorCond.text = i18n.conds_titles.cond(actor.cond, cond.maximum, cond.slope);
-            this.actorQt.text = i18n.conds_titles.qt(actor.qt, actor.qtMax, actor.qtSlope);
-            this.actorEnergy.text = i18n.conds_titles.energy(actor.energy, actor.energyMax, actor.energySlope);
+            let cond = actor.getModifiedCond()
+            this.actorCond.text = i18n.conds_titles.cond(actor.getModifiedCond().value, cond.maximum, cond.slope);
+            let qt = actor.getModifiedQt()
+            this.actorQt.text = i18n.conds_titles.qt(qt.value, qt.maximum, qt.slope);
+            let energy = actor.getModifiedEnergy()
+            this.actorEnergy.text = i18n.conds_titles.energy(energy.value, energy.maximum, energy.slope);
             this.actorMoves.text = i18n.characs.move_earth + ' ' + actor.moveEarth
                 + ' ' + i18n.characs.move_water + ' ' + actor.moveAir
                 + (actor.moveAir ? ' ' + i18n.characs.move_air + ' ' + actor.moveAir : '');
@@ -352,9 +352,7 @@ abstract class TargetCanvasCard extends CanvasCard {
 
     drawInventory() {
         // TODO
-        /*   onclick = function () {
-               ui.setEntityTargetCard(zone, entity);
-           } */
+        //   onclick = function () { ui.setEntityTargetCard(zone, entity); } 
     }
 }
 
@@ -528,7 +526,7 @@ class CanvasUi extends HtmlUI {
         //   this.infoBox = new CanvasCard(this.context,0,0);
 
 
-        /* let devicePixelRatio = window.devicePixelRatio || 1;
+         let devicePixelRatio = window.devicePixelRatio || 1;
          let backingStoreRatio = this.context.webkitBackingStorePixelRatio ||
                              this.context.mozBackingStorePixelRatio ||
                              this.context.msBackingStorePixelRatio ||
@@ -536,7 +534,7 @@ class CanvasUi extends HtmlUI {
                              this.context.backingStorePixelRatio || 1;
  
          let ratio = devicePixelRatio / backingStoreRatio;
-         console.log('ratio: ' + ratio + ' device:' + devicePixelRatio + ' backing:' + backingStoreRatio) */
+         console.log('ratio: ' + ratio + ' device:' + devicePixelRatio + ' backing:' + backingStoreRatio) 
 
         // this.loginScene = new LoginScene();
         this.redraw();
@@ -570,13 +568,13 @@ class CanvasUi extends HtmlUI {
         if (this.targetCard && this.targetCard.visible) {
             this.targetCard.draw(now);
         }
-        /*   if (this.userCard.visible) {
+           if (this.userCard.visible) {
                console.log('draw user' );
                this.userCard.draw();
-           }*/
-        /* if (this.hoverCard.visible) {
+           }
+         if (this.hoverCard.visible) {
             this.hoverCard.draw(this.context);
-        } */
+        } 
     }
 
     mouseup(event: MouseEvent) {
@@ -599,10 +597,10 @@ class CanvasUi extends HtmlUI {
     }
 
     setEntityTargetCard(zone: RelZone, entity: Furniture) {
-        /* if (this.targetCard) {
+         if (this.targetCard) {
              this.targetCard.visible = false;
              // TODO : back button, save current cell/entity ?
-         } */
+         } 
         let padding = 10;
         this.targetCard = new TargetEntityCanvasCard(this.context, this.canvas.width - padding - TargetCanvasCard.width, padding); // FIXME: need width before creating => offsetRight ?
         (<TargetEntityCanvasCard>this.targetCard).setEntity(zone, entity);
@@ -643,3 +641,4 @@ class CanvasUi extends HtmlUI {
         this.redraw();
     }
 }
+*/

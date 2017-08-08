@@ -447,16 +447,13 @@ function Imagination() {
 
     let eventTarget: EventTarget;
 
-    let canvas2D = <HTMLCanvasElement>document.getElementById('canvasUI');
+    // let canvas2D = <HTMLCanvasElement>document.getElementById('canvasUI');
 
-    if (canvas2D) {
-        ui = new CanvasUi(canvas2D);
-        eventTarget = canvas2D;
-    }
-    else {
+   //  if (canvas2D) { ui = new CanvasUi(canvas2D); eventTarget = canvas2D; }
+   // else {
         ui = new HtmlUI(document.body);
         eventTarget = document;
-    }
+  //  }
 
     ui.setSize(window.innerWidth, window.innerHeight);
 

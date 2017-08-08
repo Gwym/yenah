@@ -193,7 +193,6 @@ export class AbsZone extends Zone {
             }
         }
 
-        // TODO (0) : put directly ?
         if (agents.length) {
             saveDao.agents = agents;
         }

@@ -62,8 +62,5 @@ if ((!configuration.mongoURL || configuration.mongoURL.length === 0) && process.
   }
 }
 
-// TODO (0) : dev configuration (tests)
-
-
 dbg.info(JSON.stringify(configuration));
 

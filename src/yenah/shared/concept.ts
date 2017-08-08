@@ -53,8 +53,10 @@ export const Defaults = {
 
     FAST_MASS_SLOPE: Constants.DT_IGYEAR / BEING_MASS, // fast ageing : juvenil to adult in one ig year ~ animal-like
     SLOW_MASS_SLOPE: 20 * Constants.DT_IGYEAR / BEING_MASS, // slow ageing : juvenil to adult in 20 ig year ~ human-like
+    QT_INIT: 0,
     QT_MAX: 32,    // Size of the "slot of time" an agent can use !!! must be more than any action qt cost !!!
     QT_SLOPE: Constants.SLOPE_ONE_PER_IRLHOUR,
+    ENERGY_INIT: 0,
     ENERGY_MAX: 128,
     ENERGY_SLOPE: Constants.SLOPE_ONE_PER_IRLHOUR,
     BEING_STOMACH: 10, // TODO (1) : common max ? energy related ?
@@ -183,22 +185,25 @@ export var absoluteSpaceOrigin: SpaceRef = {
     originY: 0
 }
 
+// TODO (3) : generic AttributeEvent<Kind> and LinearAttribute<Kind> ?
+
 export enum AttrEventKind { ModExpired, MaxReached, ZeroReached }
 
 export interface AttributeEventInterface {
-    readonly kind: AttrEventKind
+    readonly attrKind: ModAttrKind
+    readonly evtKind: AttrEventKind
     readonly instant: Instant
     toString(): string
 }
 
 export class AttributeEvent implements AttributeEventInterface {
 
-    constructor(public readonly kind: AttrEventKind, public readonly instant: Instant) { }
+    constructor(public readonly attrKind: ModAttrKind, public readonly evtKind: AttrEventKind, public readonly instant: Instant) { }
 
     toString() {
-        return '{AttrEvt '
-            + ' kind:' + this.kind + ' (' + AttrEventKind[this.kind]
-            + ') instant:' + this.instant + ' ' + instantToString(this.instant)
+        return '{AttrEvt ' + this.attrKind + ' (' + ModAttrKind[this.attrKind]
+            + '), evtKind:' + this.evtKind + ' (' + AttrEventKind[this.evtKind]
+            + '), instant:' + this.instant + ' ' + instantToString(this.instant)
             + ' }'
     }
 }
@@ -213,12 +218,9 @@ export interface DynamicAttributeInterface {
 }
 
 export interface LinearAttributeInterface {
-    currentValue: number
-    readonly baseMaximum: number
-    readonly baseSlope: Slope
-    readonly currentInstant: Instant
-    getNextEvents(upToInstant: number, goForward: boolean): AttributeEventInterface[]
+    getNextEvent(upToInstant: number, goForward: boolean): AttributeEventInterface[]
     addModifier(modifier: AttributeModifier): void
+    getBaseAttribute(): DynamicAttributeInterface
     getModifiedAttribute(): DynamicAttributeInterface
 }
 
@@ -228,18 +230,16 @@ export class LinearAttribute implements LinearAttributeInterface {
     protected _maximum: number
     protected _slope: Slope
     protected _currentInstant: Instant
-
-    get baseMaximum() { return this._maximum }
-    get baseSlope() { return this._slope }
-    get currentInstant() { return this._currentInstant }
-    get currentValue() { return this._value }
-    set currentValue(v: number) { this.setCurrentValue(v) }
-
     protected attributeModifiers?: Set<AttributeModifier>
 
-    constructor(value: number, maximum: number, slope: number, instant: number, modifiers?: AttributeModifierDao[]) {
-        this._value = value
+    constructor(protected attrKind: ModAttrKind,
+        value: number, maximum: number, slope: number, instant: number,
+        modifiers?: AttributeModifierDao[]) {
+        if (value < 0 || maximum < 0 || instant < 0) {
+            throw 'negative attributes value, max and instant are not allowed'
+        }
         this._maximum = maximum
+        this._value = value
         this._slope = slope
         this._currentInstant = instant
         if (modifiers && modifiers.length) {
@@ -249,26 +249,39 @@ export class LinearAttribute implements LinearAttributeInterface {
         }
     }
 
-    /* getBaseAttribute(): DynamicAttributeInterface {
- 
-         return {
-             value: this._value,
-             maximum: this._maximum,
-             slope: this._slope,
-             instant: this._currentInstant
-         }
-     } */
+    // increaseValue / decreaseValue
+    modifyValue(delta: number): AttributeEventInterface[] {
 
-    protected setCurrentValue(newValue: number) {
+        let happeningEvents: AttributeEventInterface[] = []
+        let newModValue = this._value + delta
 
-        let modAttr = this.getModifiedAttribute()
+        if (newModValue <= 0) {
+            // TODO (1) : retrigger on same value or not ? && this._value !== 0 
+            happeningEvents.push(new AttributeEvent(this.attrKind, AttrEventKind.ZeroReached, this._currentInstant))
+            newModValue = 0
+        }
+        else {
 
-        newValue = Math.max(Math.min(newValue, modAttr.maximum), 0)
+            let currentModMax = this.getModifiedAttribute().maximum
+            if (newModValue >= currentModMax) {
+                // TODO (1) : retrigger on same value or not ? && this._value !== currentModMax  
+                happeningEvents.push(new AttributeEvent(this.attrKind, AttrEventKind.MaxReached, this._currentInstant))
+                newModValue = currentModMax
+            }
+        }
 
-        // TODO (0) : generate event on max or zero reaching ?
-        // return events ...
+        this._value = newModValue
 
-        this._value = newValue
+        return happeningEvents
+    }
+
+    getBaseAttribute(): DynamicAttributeInterface {
+        return {
+            value: this._value,
+            maximum: this._maximum,
+            slope: this._slope,
+            instant: this._currentInstant
+        }
     }
 
     getModifiedAttribute(): DynamicAttributeInterface {
@@ -279,25 +292,14 @@ export class LinearAttribute implements LinearAttributeInterface {
         // virtually apply modifiers
         if (this.attributeModifiers) {
             for (let modifier of this.attributeModifiers) {
-                let expirationInstant = this._currentInstant + modifier.duration
-
-                if (expirationInstant >= this._currentInstant) {
-
-                    if (modifier.slopeVariation) {
-                        currentSlope += modifier.slopeVariation
-                    }
-                    if (modifier.maxVariation) {
-                        currentMax += modifier.maxVariation
-                    }
+                if (modifier.slopeVariation) {
+                    currentSlope += modifier.slopeVariation
                 }
-                else {
-                    dbg.error('Modifier has expired : remaining unhandled modifier ' + modifier)
-                    // TODO (2) : remove expired ?
+                if (modifier.maxVariation) {
+                    currentMax += modifier.maxVariation
                 }
             }
         }
-
-        // let currentValue = this.getDynNormalValue(this._currentInstant, this._value, currentMax, currentSlope)
 
         return {
             value: this._value,
@@ -307,7 +309,7 @@ export class LinearAttribute implements LinearAttributeInterface {
         }
     }
 
-    protected getDynNormalValue(dt: number, val: number, max: number, slope: number) {
+    protected getDynamicValue(dt: number, val: number, max: number, slope: number) {
 
         if (slope != Constants.NO_SLOPE) {
             val += dt * slope;  // FIXME (1) : slope should be an integer. Use inverseSlope to store in options ?
@@ -325,6 +327,100 @@ export class LinearAttribute implements LinearAttributeInterface {
         return limitedVal;
     }
 
+    protected stabiliseFinallyAt(newSnapshotInstant: Instant, snapshotMax: number, snapshotSlope: number): void {
+
+        // FIXME (3) : REF MAXMOD max modifier expiration should decrease currentValue
+        // FIXME (3) : REF IntegerInstant check for rounding issue that could cause double event ? (ex: event Max triggerd, but value at 0.9999... or event zero at 0.000..1)
+        this._value = this.getDynamicValue(newSnapshotInstant, this._value, snapshotMax, snapshotSlope)
+
+        if (this.attributeModifiers) {
+            for (let modifier of this.attributeModifiers) {
+                let expirationInstant = this._currentInstant + modifier.duration
+
+                if (expirationInstant <= newSnapshotInstant) {
+                    this.attributeModifiers.delete(modifier)
+                }
+                else {
+                    modifier.duration -= newSnapshotInstant - this._currentInstant
+                }
+            }
+        }
+
+        this._currentInstant = newSnapshotInstant
+    }
+
+    // returns first upcoming event (and all events happening at the same instant) in the limit of upToInstant
+    // goForward === true => stabilises at first event instant
+    getNextEvent(upToInstant = Number.POSITIVE_INFINITY, goForward = false): AttributeEventInterface[] {
+
+        let currentSlope = this._slope
+        let currentMax = this._maximum
+        let nextExpiration = Number.POSITIVE_INFINITY
+        let nextMaxReachingInstant = Number.POSITIVE_INFINITY
+        let nextZeroReachingInstant = Number.POSITIVE_INFINITY
+        let happeningEvents: AttributeEventInterface[] = []
+
+        if (this.attributeModifiers) {
+            for (let modifier of this.attributeModifiers) {
+                nextExpiration = Math.min(nextExpiration, this._currentInstant + modifier.duration)
+
+                if (modifier.slopeVariation) {
+                    currentSlope += modifier.slopeVariation
+                }
+                if (modifier.maxVariation) {
+                    currentMax += modifier.maxVariation
+                }
+            }
+        }
+
+        if (currentSlope > 0) {
+            
+            if (this._value < currentMax) {
+                // TODO (3) : REF IntegerInstant integer DH => Math.floor, ceil, round ? setter() ?
+                nextMaxReachingInstant = this._currentInstant + (currentMax - this._value) / currentSlope
+            }
+            else if (this._value === currentMax) {
+                dbg.log('skip MaxReaching event, max already reached')
+            }
+            else {
+                throw 'attribute value exceeds maximum (with modification)'
+            }
+        }
+        else if (currentSlope < 0) {
+
+            if (this._value > 0) {
+                // TODO (3) : REF IntegerInstant integer DH => Math.floor, ceil, round ?
+                nextZeroReachingInstant = this._currentInstant - this._value / currentSlope
+            }
+            else {
+                dbg.log('skip ZeroReaching event, zero already reached')
+            }
+        }
+
+        let nextEventInstant = Math.min(nextMaxReachingInstant, nextZeroReachingInstant, nextExpiration)
+
+        if (nextEventInstant !== Number.POSITIVE_INFINITY && nextEventInstant <= upToInstant) {
+
+            if (nextMaxReachingInstant === nextEventInstant) {
+                happeningEvents.push(new AttributeEvent(this.attrKind, AttrEventKind.MaxReached, nextEventInstant))
+            }
+            if (nextZeroReachingInstant === nextEventInstant) {
+                happeningEvents.push(new AttributeEvent(this.attrKind, AttrEventKind.ZeroReached, nextEventInstant))
+            }
+            if (nextExpiration === nextEventInstant) {
+                // FIXME (1) : should generate one event per modifier ?
+                happeningEvents.push(new AttributeEvent(this.attrKind, AttrEventKind.ModExpired, nextEventInstant))
+            }
+
+            if (goForward) {
+                this.stabiliseFinallyAt(nextEventInstant, currentMax, currentSlope)
+            }
+        }
+
+        return happeningEvents
+    }
+
+    // stabilises and retruns all events up to given snapshot instant (included)
     stabiliseAt(newSnapshotInstant: Instant): AttributeEventInterface[] {
 
         if (newSnapshotInstant < this._currentInstant) { throw 'Cannot go back in time' }
@@ -332,14 +428,14 @@ export class LinearAttribute implements LinearAttributeInterface {
         let happenedEvents: AttributeEventInterface[] = []
         let nextEvents: AttributeEventInterface[]
 
-        if (newSnapshotInstant === this._currentInstant) { 
-            dbg.error('stabilising at already reached current instant')
+        if (newSnapshotInstant === this._currentInstant) {
+            dbg.log('stabilising at already reached current instant')
             return happenedEvents
         }
 
         let loopCount = 0
         for (; loopCount < Constants.MAX_EVENTS_PER_TICK; loopCount++) {
-            nextEvents = this.getNextEvents(newSnapshotInstant, GO_FORWARD)
+            nextEvents = this.getNextEvent(newSnapshotInstant, GO_FORWARD)
 
             if (nextEvents.length) {
                 happenedEvents.push(...nextEvents)
@@ -374,99 +470,6 @@ export class LinearAttribute implements LinearAttributeInterface {
         return happenedEvents
     }
 
-    protected stabiliseFinallyAt(newSnapshotInstant: Instant, snapshotMax: number, snapshotSlope: number): void {
-
-        // FIXME (3) : REF MAXMOD max modifier expiration should decrease currentValue
-        this._value = this.getDynNormalValue(newSnapshotInstant, this._value, snapshotMax, snapshotSlope)
-
-        if (this.attributeModifiers) {
-            for (let modifier of this.attributeModifiers) {
-                let expirationInstant = this._currentInstant + modifier.duration
-
-                if (expirationInstant <= newSnapshotInstant) {
-                    this.attributeModifiers.delete(modifier)
-                }
-                else {
-                    modifier.duration -= newSnapshotInstant - this._currentInstant
-                }
-            }
-        }
-
-        this._currentInstant = newSnapshotInstant
-    }
-
-    getNextEvents(upToInstant = Number.POSITIVE_INFINITY, goForward = false): AttributeEventInterface[] {
-
-        let currentSlope = this._slope
-        let currentMax = this._maximum
-        let nextExpiration = Number.POSITIVE_INFINITY
-        let nextMaxReachingInstant = Number.POSITIVE_INFINITY
-        let nextZeroReachingInstant = Number.POSITIVE_INFINITY
-        let happeningEvents: AttributeEventInterface[] = []
-
-        if (this.attributeModifiers) {
-            for (let modifier of this.attributeModifiers) {
-                nextExpiration = Math.min(nextExpiration, this._currentInstant + modifier.duration)
-
-                if (modifier.slopeVariation) {
-                    currentSlope += modifier.slopeVariation
-                }
-                if (modifier.maxVariation) {
-                    currentMax += modifier.maxVariation
-                }
-            }
-        }
-
-        if (currentSlope > 0) {
-            // TODO (0) : REF IntegerInstant integer DH => Math.floor, ceil, round ? setter() ?
-            nextMaxReachingInstant = this._currentInstant + (currentMax - this._value) / currentSlope
-        }
-        else if (currentSlope < 0) {
-            // TODO (0) : REF IntegerInstant integer DH => Math.floor, ceil, round ?
-            nextZeroReachingInstant = this._currentInstant - this._value / currentSlope
-        }
-
-        let nextEventInstant = Math.min(nextMaxReachingInstant, nextZeroReachingInstant, nextExpiration)
-
-        if (nextEventInstant !== Number.POSITIVE_INFINITY
-            && nextEventInstant <= upToInstant) {
-
-            if (nextMaxReachingInstant === nextEventInstant) {
-                happeningEvents.push(new AttributeEvent(AttrEventKind.MaxReached, nextEventInstant))
-                // TODO (0) : currentValue = currentMax ? // avoid rounding issues
-            }
-            if (nextZeroReachingInstant === nextEventInstant) {
-                happeningEvents.push(new AttributeEvent(AttrEventKind.ZeroReached, nextEventInstant))
-                // TODO (0) : currentValue = 0 ? // avoid rounding issues
-            }
-            if (nextExpiration === nextEventInstant) {
-                // FIXME (1) : should generate one event per modifier ?
-                happeningEvents.push(new AttributeEvent(AttrEventKind.ModExpired, nextEventInstant))
-            }
-
-            if (goForward) {
-
-                this.stabiliseFinallyAt(nextEventInstant, currentMax, currentSlope)
-                /* // FIXME (3) : REF MAXMOD max modifier expiration should decrease currentValue
-                 this._value = this.getDynNormalValue(nextEventInstant, this._value, currentMax, currentSlope)
- 
-                 if (this.attributeModifiers) {
-                     for (let modifier of this.attributeModifiers) {
-                         let expirationInstant = this._currentInstant + modifier.duration
- 
-                         if (expirationInstant <= nextEventInstant) {
-                             this.attributeModifiers.delete(modifier)
-                         }
-                     }
-                 }
- 
-                 this._currentInstant = nextEventInstant */
-            }
-        }
-
-        return happeningEvents
-    }
-
     addModifier(modifier: AttributeModifier) {
 
         // TODO (1) : check for duplicates ? Merge modifiers ?
@@ -478,7 +481,7 @@ export class LinearAttribute implements LinearAttributeInterface {
     }
 
     modifierToDao(kind: ModAttrKind): AttributeModifierDao[] | undefined {
-        // TODO (0) : rebase to given DH ?
+
         if (this.attributeModifiers && this.attributeModifiers.size > 0) {
 
             let modDaos: AttributeModifierDao[] = [];
@@ -490,19 +493,18 @@ export class LinearAttribute implements LinearAttributeInterface {
             }
 
             return modDaos;
-
         }
         return;
     }
 
     toString() {
-        return '{LinAttr, val:' + this._value
+        return '{LinAttr, ' + this.attrKind + ' (' + ModAttrKind[this.attrKind]
+            + '), val:' + this._value
             + ', max:' + this._maximum
             + ', slope:' + slopeToString(this._slope)
             + ', dh:' + this._currentInstant
             + '}'
     }
-
 }
 
 // modifiers
@@ -528,6 +530,10 @@ class AttributeModifier {
     constructor(modifierDao: AttributeModifierDao) {
         // this.kind = modifierDao.kind;
         // this.originDH = modifierDao.originDH;
+        // TODO (3) : REF IntegerInstant integer DH => Math.floor, ceil, round ? setter() ?
+        if (modifierDao.duration < 0) {
+            throw 'negative duration is not allowed'
+        }
         this.duration = modifierDao.duration;
     }
 }
@@ -537,11 +543,6 @@ class AttributeModifier {
 export class CondModifier extends AttributeModifier {
 
     slopeVariation = - 2 * Constants.SLOPE_ONE_PER_IRLSECOND
-    /* applyModificationTo(linearAttribute: LinearAttribute) {
- 
-         // FIXME (0) : poison => if < 0 keep sign !
-         linearAttribute.slope *= -1;
-     }*/
 }
 
 // TODO (3) : max modifier
@@ -562,16 +563,14 @@ export function ModifierFactory(modifierDao: AttributeModifierDao): AttributeMod
     return new ModifierConstructors[modifierDao.kind](modifierDao);
 }
 
-// DynModifier
-// SlopeModifier
-// BaseModifier
-// PeriodicModifier (mood ~ mind capacities, qt max, energy max) or as permanent attibute ?
+
+// TODO (4) : PeriodicModifier (mood ~ mind capacities, qt max, energy max) or as permanent attibute ?
 
 // condslope mod : hungry, acid, fire, cold (furniture & agents), poison (agents)
 // mood modifiers : energyslope, max energy, qt slope, max qt
 // move modifier : reduce/enhence move 
-// ex : run : , augment move cost energy   reduce move costqt
-// repos : energyslope++
+// ex : run : increase move cost, energy / reduce move costqt
+// rest (repos) : increase energy slope
 // solidity modifier
 // disable capacity (ex : compass)
 
@@ -654,15 +653,19 @@ export interface EntityOptions {
 
     classId: ConceptClass
     varAttr: EntityVarOptions
-    condMax?: number
-    condSlope?: Slope
+    baseCondMax?: number
+    baseCondSlope?: Slope
     mass?: number
     mainMaterial?: MatterType	// TODO (4) : defined by solidity ? being=> flesh/vegetal
     mainColor?: number // (visibility modifier ?)
     solidity?: SolidityInterface
     passiveRetort?: Damage
     baseCapacity?: 0 // TODO (2) : inventory max length ? or getMassSum() limit ?
-    attributeModifiers?: AttributeModifierDao[]
+    attributeModifiers?: {
+        cond?: AttributeModifierDao[],
+        qt?: AttributeModifierDao[],
+        energy?: AttributeModifierDao[]
+    }
 }
 
 export interface EntityIdOptions extends EntityOptions {
@@ -681,17 +684,17 @@ export interface EntityInterface extends Target {
     posX: number
     posY: number
 
-    cond: number
+    modifyCond(delta: number): AttributeEventInterface[]
+    getBaseCond(): DynamicAttributeInterface
     getModifiedCond(): DynamicAttributeInterface
-    /* readonly condSlope: number
-     readonly condMax: number */
     readonly mass: number
     readonly solidity: Solidity
 
     readonly inventory: EntityInterface[]
 
     readonly updateDH: number
-    getNextEvents(upToInstant?: number): AttributeEventInterface[]
+    // returns first upcoming event (and all events happening at the same instant) in the limit of upToInstant
+    getNextEvent(upToInstant?: number): AttributeEventInterface[]
     getNextCriticalEvent(upToInstant: Instant): AttributeEventInterface | undefined
     stabiliseAt(updateDH: number): AttributeEventInterface[]
 
@@ -705,7 +708,6 @@ export interface EntityInterface extends Target {
 export abstract class EntityBase implements EntityInterface {
 
     gId: EntityIdentifier
-    //  protected updateDH: number   // "dao update time" : last saving in Persistor  // TODO (0) : updateDH ?
     varModified = false; // TODO (5) : public readonly, getter, no setter 
     fullModified = false; // TODO (5) : public readonly, getter, no setter
     //  protected inventoryModified = false;
@@ -714,7 +716,7 @@ export abstract class EntityBase implements EntityInterface {
     // protected baseAttr: number[]
     // protected dynAttr: DynamicAttribute[]
     // protected organs: Organ[]
-    inventory: EntityInterface[] = [] // TODO (0) : readonly inventory modifications getter/setter
+    inventory: EntityInterface[] = [] // TODO (1) : readonly inventory modifications getter/setter
     protected attributeModifiers: AttributeModifierCollection = {}
     // discretions: number[], // visibility of each attribute by an observer
     readonly reactions: ActId[] = [] // TODO (1) : reactions[indexedActs] or reactionsList[].push (acts...) save in DB or fixed by entType ?
@@ -735,14 +737,17 @@ export abstract class EntityBase implements EntityInterface {
     get posY() { return this._posY }
     set posY(v: number) { if (v !== this._posY) { this._posY = v; this.varModified = true } }
 
-    protected _cond: LinearAttribute;
-    get cond() { return this._cond.currentValue; }
-    set cond(v: number) { if (v !== this._cond.currentValue) { this._cond.currentValue = v; this.varModified = true } }
-    getModifiedCond(): DynamicAttributeInterface {
-        return this._cond.getModifiedAttribute();
+    protected _cond: LinearAttribute
+    modifyCond(delta: number): AttributeEventInterface[] {
+        this.varModified = true
+        return this._cond.modifyValue(delta)
     }
-    /*  get condSlope(): Slope { return this._cond.slope }
-      get condMax() { return this._cond.maximum } */
+    getBaseCond(): DynamicAttributeInterface {
+        return this._cond.getBaseAttribute()
+    }
+    getModifiedCond(): DynamicAttributeInterface {
+        return this._cond.getModifiedAttribute()
+    }
 
     protected _mass: number // Mass is fixed for furnitures but dynamic for agents
     get mass() { return (this._mass) }
@@ -762,15 +767,16 @@ export abstract class EntityBase implements EntityInterface {
         this._posY = opt.varAttr.posY;
         this._theta = opt.varAttr.theta;
 
-        this._mass = opt.mass !== undefined ? opt.mass : Defaults.FURNITURE_MASS;
-        let condMax = opt.condMax !== undefined ? opt.condMax : Defaults.FURNITURE_COND_MAX;
+        this._mass = opt.mass !== undefined ? opt.mass : Defaults.FURNITURE_MASS
+        let baseCondMax = opt.baseCondMax !== undefined ? opt.baseCondMax : Defaults.FURNITURE_COND_MAX
         this._cond = new LinearAttribute(
-            opt.varAttr.cond !== undefined ? opt.varAttr.cond : condMax,
-            condMax,
-            opt.condSlope !== undefined ? opt.condSlope : Defaults.FURNITURE_COND_SLOPE,
+            ModAttrKind.Cond,
+            opt.varAttr.cond !== undefined ? opt.varAttr.cond : baseCondMax,
+            baseCondMax,
+            opt.baseCondSlope !== undefined ? opt.baseCondSlope : Defaults.FURNITURE_COND_SLOPE,
             opt.varAttr.updateDH,
-            opt.attributeModifiers
-        );
+            opt.attributeModifiers ? opt.attributeModifiers.cond : undefined
+        )
         this.solidity = new Solidity(); // opt.solidity !== undefined ? opt.solidity : Defaults.SOLIDITY;
         if (opt.solidity) {
             // TODO (3) : for ... or store in database directly with number indexes ?
@@ -784,19 +790,22 @@ export abstract class EntityBase implements EntityInterface {
         }
     }
 
-    getNextEvents(upToInstant?: number): AttributeEventInterface[] {
+    getNextEvent(upToInstant?: number): AttributeEventInterface[] {
 
         // TODO (0) : other events, other attributes, objectives, memory, etc ?
+        // FIXME (0) : return nextEvent (one event, not all events up to upToIntstant) (see Agent getNextEvent)
 
-        return this._cond.getNextEvents(upToInstant)
+        // if next event === current instant => drop ?? (max reached) GO_FORWARD ?
+
+        return this._cond.getNextEvent(upToInstant)
     }
 
     getNextCriticalEvent(upToInstant = Number.POSITIVE_INFINITY) {
 
-        let events = this._cond.getNextEvents(upToInstant)
+        let events = this._cond.getNextEvent(upToInstant)
 
         for (let evt of events) {
-            if (evt.kind === AttrEventKind.ZeroReached && evt.instant <= upToInstant) {
+            if (evt.evtKind === AttrEventKind.ZeroReached && evt.instant <= upToInstant) {
                 return evt
             }
         }
@@ -805,77 +814,19 @@ export abstract class EntityBase implements EntityInterface {
 
     stabiliseAt(newUpdateDH: number): AttributeEventInterface[] {
 
-         let dt = newUpdateDH - this._updateDH
- 
-         if (dt < 0) {
-             throw 'Cannot go back in time'
-         }
- 
-         this.varModified = true
-         this._updateDH = newUpdateDH
- 
-       //  this.applyModifiers(newUpdateDH);
- 
-         let happenedEvents = this._cond.stabiliseAt(newUpdateDH)
- 
-         // TODO (0) : _childStabiliseUpTo()
+        let dt = newUpdateDH - this._updateDH
+
+        if (dt < 0) {
+            throw 'Cannot go back in time'
+        }
+
+        this.varModified = true
+        this._updateDH = newUpdateDH
+
+        let happenedEvents = this._cond.stabiliseAt(newUpdateDH)
 
         return happenedEvents
     }
-
-    // TODO (1) : give stable/instable info to stablilize ? 
-    // TODO (1) : separate positive only and positive/negative allowed ?
-
-    // get dynamic attribute normalized value
-    /* protected getDynNormalValue(dt: number, val: number, max: number, slope: number) {
- 
-         if (slope != Constants.NO_SLOPE) {
-             val += dt * slope;  // FIXME (1) : slope should be an integer. Use inverseSlope to store in options ?
-         }
-         let limitedVal = val > max ? max : (val < 0 ? 0 : val);
- 
-         dbg.attr('getDyn > ' + limitedVal
-             + ' (max:' + 1
-             + ' dh:' + this._updateDH
-             + ' detaT:' + dt
-             + ' slope: ' + slope
-             + ' real: ' + val + ') from '
-             + this.gId
-         );
- 
-         return limitedVal;
-     } */
-
-    /* private addModifier(modifier: AttributeModifier) {
- 
-         if (modifier.originDH + modifier.duration >= this._updateDH) {
-             console.error('addModifier > Trying to add an expired modifier');
-             return;
-         } 
- 
-         // TODO (1) : check for duplicates ? Merge modifiers ?
- 
-         if (modifier.kind === ModAttrKind.Cond) {
-             if (this.attributeModifiers.condModifiers === undefined) {
-                 this.attributeModifiers.condModifiers = [];
-             }
-             this.attributeModifiers.condModifiers.push(modifier);
-         }
- } */
-
-    /*  protected applyModifiers(upToDH: number) {
-  
-          // TODO (1) : for modAttrKind[ID]... ?
-          // FIXME (1) modCondMax ? how to do it with normalized values ?? localMax = 0.9 of globalMax for example ?
-  
-          if (this.attributeModifiers.condModifiers
-              && this.attributeModifiers.condModifiers.length) {
-              dbg.log('Entity apply cond modifiers :' + this.attributeModifiers.condModifiers.length);
-  
-              let condAttr = new LinearAttribute(this._cond, this._condMax, this._condSlope, this._updateDH);
-              condAttr.forwardToNextEvent(this.attributeModifiers.condModifiers, upToDH); 
-          }
-      }  */
 
     toVarDao(): EntityVarOptions { // ~ protected, Persistor friend ! (only used internally or to store partial doc in Persistor)
         return {
@@ -883,7 +834,7 @@ export abstract class EntityBase implements EntityInterface {
             posX: this._posX,
             posY: this._posY,
             theta: this._theta,
-            cond: this._cond.currentValue
+            cond: this._cond.getBaseAttribute().value
         }
     }
 
@@ -893,8 +844,11 @@ export abstract class EntityBase implements EntityInterface {
             varAttr: this.toVarDao(),
             classId: this._classId,
             mass: this._mass,
-            condSlope: this._cond.baseSlope,
-            attributeModifiers: this._cond.modifierToDao(ModAttrKind.Cond)
+            baseCondSlope: this._cond.getBaseAttribute().slope,
+            baseCondMax: this._cond.getBaseAttribute().maximum,
+            attributeModifiers: {
+                cond: this._cond.modifierToDao(ModAttrKind.Cond)
+            }
         }
     }
 
@@ -983,9 +937,13 @@ export class Furniture extends EntityBase implements FurnitureInterface {
     }
 
     toString() {
+        let baseCond = this._cond.getBaseAttribute()
+        let modCond = this._cond.getModifiedAttribute()
         return ' { class:Furniture'
             + ', dt:' + this._updateDH
-            + ', cond:' + this._cond.currentValue + '/' + this._cond.baseMaximum + '@' + this._cond.baseSlope
+            + ', cond:' + baseCond.value
+            + '/' + baseCond.maximum + '(' + modCond.maximum + ')'
+            + '@' + baseCond.slope + '(' + modCond.slope + ')'
             + ' } ';
     }
 }
@@ -1000,7 +958,6 @@ export class AgentIdentifier extends EntityIdentifier {
 }
 
 interface AgentVarOptions extends EntityVarOptions {
-
     qt: number
     energy: number
     stomach: number
@@ -1092,12 +1049,14 @@ export interface AgentInterface extends EntityInterface {
     readonly massMax: number
     readonly massSlope: number
     getWeight(): number // full weight, including inventory
-    qt: number
-    readonly qtMax: number
-    readonly qtSlope: number
-    energy: number
-    readonly energyMax: number
-    readonly energySlope: number
+
+    modifyQt(delta: number): AttributeEventInterface[]
+    getBaseQt(): DynamicAttributeInterface
+    getModifiedQt(): DynamicAttributeInterface
+
+    modifyEnergy(delta: number): AttributeEventInterface[]
+    getBaseEnergy(): DynamicAttributeInterface
+    getModifiedEnergy(): DynamicAttributeInterface
 
     canReceive(furniture: FurnitureInterface): void
 
@@ -1126,58 +1085,30 @@ export class Agent extends EntityBase implements AgentInterface {
     protected _massMax: number
     get massMax() { return this._massMax }
 
-    protected _qt: number
-    get qt() { return this._qt }
-    set qt(v: number) { if (v !== this._qt) { this._qt = v; this.varModified = true } }
-    protected _qtSlope: Slope
-    protected modQtSlope: Slope
-    get qtSlope() { return this.modQtSlope }
-    protected _qtMax: number
-    get qtMax() { return this._qtMax }
-
-    protected _energy: number
-    get energy() { return this._energy }
-    set energy(v: number) { if (v !== this._energy) { this._energy = v; this.varModified = true } }
-    protected _energySlope: Slope
-    protected modEnergySlope: Slope
-    get energySlope() { return this.modEnergySlope }
-    protected _energyMax: number
-    get energyMax() { return this._energyMax }
+    protected _qt: LinearAttribute
+    modifyQt(delta: number): AttributeEventInterface[] {
+        this.varModified = true
+        return this._qt.modifyValue(delta)
+    }
+    getBaseQt(): DynamicAttributeInterface {
+        return this._qt.getBaseAttribute()
+    }
+    getModifiedQt(): DynamicAttributeInterface {
+        return this._qt.getModifiedAttribute()
+    }
+    protected _energy: LinearAttribute
+    modifyEnergy(delta: number): AttributeEventInterface[] {
+        this.varModified = true
+        return this._energy.modifyValue(delta)
+    }
+    getBaseEnergy(): DynamicAttributeInterface {
+        return this._energy.getBaseAttribute()
+    }
+    getModifiedEnergy(): DynamicAttributeInterface {
+        return this._energy.getModifiedAttribute()
+    }
 
     readonly actions: ActId[] = []
-
-    /*  get updateDH() { return this._updateDH }
-      set updateDH(newUpdateDH: number) {
-  
-          // update cond
-          let dt = newUpdateDH - this._updateDH;
-  
-          if (dt < 0) {
-              throw 'Entity.set updateDH > Trying to reverse time. newUpdateDH ' + newUpdateDH + ' < ' + this._updateDH;
-          }
-          else if (dt === 0) {
-              return;
-          }
-  
-          this.varModified = true
-          this._updateDH = newUpdateDH;
-  
-          this.applyModifiers();
-          this._cond = this.getDynNormalValue(dt, this._cond, this._condMax, this.modCondSlope);
-          this._qt = this.getDynNormalValue(dt, this._qt, this._qtMax, this.modQtSlope);
-          this._energy = this.getDynNormalValue(dt, this._energy, this._energyMax, this.modEnergySlope);
-      } */
-
-    // TODO (0) : protected _stabilise
-    /* stabiliseUpTo(newUpdateDH: number): number {
-         let dt = super.stabiliseUpTo(newUpdateDH);
- 
-         dbg.log('Agent.stabilise > ');
- 
-         this._qt = this.getDynNormalValue(dt, this._qt, this._qtMax, this.modQtSlope);
-         this._energy = this.getDynNormalValue(dt, this._energy, this._energyMax, this.modEnergySlope);
-         return dt;
-     }*/
 
     constructor(opt: AgentIdOptions) {
         super(opt);
@@ -1185,13 +1116,14 @@ export class Agent extends EntityBase implements AgentInterface {
         // overwrite entity default cond slope and mass
         // TODO (5) : absract entity, concreet furniture ?
         // this._condSlope = opt.condSlope !== undefined ? opt.condSlope : Defaults.BEING_COND_SLOPE;
-        let condMax = opt.condMax !== undefined ? opt.condMax : Defaults.BEING_COND_MAX;
+        let baseCondMax = opt.baseCondMax !== undefined ? opt.baseCondMax : Defaults.BEING_COND_MAX;
         this._cond = new LinearAttribute(
-            opt.varAttr.cond !== undefined ? opt.varAttr.cond : condMax,
-            condMax,
-            opt.condSlope !== undefined ? opt.condSlope : Defaults.BEING_COND_SLOPE,
+            ModAttrKind.Cond,
+            opt.varAttr.cond !== undefined ? opt.varAttr.cond : baseCondMax,
+            baseCondMax,
+            opt.baseCondSlope !== undefined ? opt.baseCondSlope : Defaults.BEING_COND_SLOPE,
             opt.varAttr.updateDH,
-            opt.attributeModifiers
+            opt.attributeModifiers ? opt.attributeModifiers.cond : undefined
         );
 
         this.actions.push(ActId.ActMoveTo, ActId.ActTurnTo, ActId.ActPickUp, ActId.ActLayDown);
@@ -1199,12 +1131,22 @@ export class Agent extends EntityBase implements AgentInterface {
         this.name = opt.name ? opt.name : '';
         this._massMax = opt.massMax !== undefined ? opt.massMax : Defaults.BEING_MASS;
         this._massSlope = opt.massSlope !== undefined ? opt.massSlope : Defaults.FAST_MASS_SLOPE;
-        this._qtMax = opt.qtMax !== undefined ? opt.qtMax : Defaults.QT_MAX;
-        this._qt = opt.varAttr.qt !== undefined ? opt.varAttr.qt : 0;
-        this._qtSlope = opt.qtSlope !== undefined ? opt.qtSlope : Defaults.QT_SLOPE;
-        this._energyMax = opt.energyMax !== undefined ? opt.energyMax : Defaults.ENERGY_MAX;
-        this._energy = opt.varAttr.energy !== undefined ? opt.varAttr.energy : 0;
-        this._energySlope = opt.energySlope !== undefined ? opt.energySlope : Defaults.ENERGY_SLOPE;
+        this._qt = new LinearAttribute(
+            ModAttrKind.Qt,
+            opt.varAttr.qt !== undefined ? opt.varAttr.qt : Defaults.QT_INIT,
+            opt.qtMax !== undefined ? opt.qtMax : Defaults.QT_MAX,
+            opt.qtSlope !== undefined ? opt.qtSlope : Defaults.QT_SLOPE,
+            opt.varAttr.updateDH,
+            opt.attributeModifiers ? opt.attributeModifiers.qt : undefined
+        )
+        this._energy = new LinearAttribute(
+            ModAttrKind.Energy,
+            opt.varAttr.energy !== undefined ? opt.varAttr.energy : Defaults.ENERGY_INIT,
+            opt.energyMax !== undefined ? opt.energyMax : Defaults.ENERGY_MAX,
+            opt.energySlope !== undefined ? opt.energySlope : Defaults.ENERGY_SLOPE,
+            opt.varAttr.updateDH,
+            opt.attributeModifiers ? opt.attributeModifiers.energy : undefined
+        )
         this.moveWater = opt.moveWater !== undefined ? opt.moveWater : Defaults.MOVE_WATER;
         this.moveEarth = opt.moveEarth !== undefined ? opt.moveEarth : Defaults.MOVE_EARTH;
         this.moveAir = opt.moveAir !== undefined ? opt.moveAir : Defaults.MOVE_AIR;
@@ -1216,45 +1158,106 @@ export class Agent extends EntityBase implements AgentInterface {
         // super.fromOptions(opt);
     }
 
+
+    getNextEvent(upToInstant?: number): AttributeEventInterface[] {
+
+        // TODO (0) : GO_FORWARD ?
+        // FIXME (0) : return nextEvent (one event, not all events up to upToIntstant)
+
+        let happeningEvents = super.getNextEvent(upToInstant)
+        happeningEvents.push(...this._qt.getNextEvent(upToInstant))
+        happeningEvents.push(...this._energy.getNextEvent(upToInstant))
+
+        let minInstant = Number.POSITIVE_INFINITY
+        for (let evt of happeningEvents) {
+            minInstant  = Math.min(minInstant, evt.instant)
+        }
+        let firstEvents = []
+        for (let evt of happeningEvents) {
+            if (evt.instant === minInstant) {
+                firstEvents.push(evt)
+            }
+        }
+
+        return firstEvents
+    }
+
+    stabiliseAt(newUpdateDH: number): AttributeEventInterface[] {
+
+        let dt = newUpdateDH - this._updateDH
+
+        if (dt < 0) {
+            throw 'Cannot go back in time'
+        }
+
+        this.varModified = true
+        this._updateDH = newUpdateDH
+
+        let happenedEvents = this._cond.stabiliseAt(newUpdateDH)
+        happenedEvents.push(...this._qt.stabiliseAt(newUpdateDH))
+        happenedEvents.push(...this._energy.stabiliseAt(newUpdateDH))
+
+        return happenedEvents
+    }
+
     toVarDao(): AgentVarOptions {
         return {
             updateDH: this._updateDH,
             posX: this._posX,
             posY: this._posY,
             theta: this._theta,
-            cond: this._cond.currentValue,
-            qt: this.qt,
-            energy: this.energy,
+            cond: this._cond.getBaseAttribute().value,
+            qt: this._qt.getBaseAttribute().value,
+            energy: this._energy.getBaseAttribute().value,
             stomach: this.stomach
         }
     }
 
     toDao(): AgentOptions {
 
-        return {
+        let aMod: {
+            cond?: AttributeModifierDao[],
+            qt?: AttributeModifierDao[],
+            energy?: AttributeModifierDao[]
+        } = {}
+
+        let hasMod = false
+        let mod = this._cond.modifierToDao(ModAttrKind.Cond)
+        if (mod) { aMod.cond = mod; hasMod = true }
+        mod = this._qt.modifierToDao(ModAttrKind.Qt)
+        if (mod) { aMod.qt = mod; hasMod = true }
+        mod = this._energy.modifierToDao(ModAttrKind.Energy)
+        if (mod) { aMod.energy = mod; hasMod = true }
+
+        let dao: AgentOptions = {
             varAttr: this.toVarDao(),
             classId: this.entType,
             name: this.name,
-            condMax: this.mass,
-            condSlope: this._cond.baseSlope,
-            qtMax: this.qtMax,
-            qtSlope: this.qtSlope,
-            energyMax: this.energyMax,
-            energySlope: this.energySlope,
+            baseCondMax: this._cond.getBaseAttribute().maximum,
+            baseCondSlope: this._cond.getBaseAttribute().slope,
+            qtMax: this._qt.getBaseAttribute().maximum,
+            qtSlope: this._qt.getBaseAttribute().slope,
+            energyMax: this._energy.getBaseAttribute().maximum,
+            energySlope: this._energy.getBaseAttribute().slope,
             moveWater: this.moveWater,
             moveEarth: this.moveEarth,
             moveAir: this.moveAir,
             mass: this.mass,
             massMax: this.massMax,
-            massSlope: this.massSlope,
-            attributeModifiers: this._cond.modifierToDao(ModAttrKind.Cond)
+            massSlope: this.massSlope
         }
+
+        if (hasMod) {
+            dao.attributeModifiers = aMod
+        }
+
+        return dao
     }
 
     toIdDao(): AgentIdOptions {
-        let dao: AgentIdOptions = <AgentIdOptions>this.toDao();
-        dao.gId = this.gId;
-        return dao;
+        let dao: AgentIdOptions = <AgentIdOptions>this.toDao()
+        dao.gId = this.gId
+        return dao
     }
 
     clone(): AgentInterface {
@@ -1263,16 +1266,6 @@ export class Agent extends EntityBase implements AgentInterface {
         idDao.gId = this.gId;
         return World.AgentFactory(idDao);
     }
-
-    /*   protected applyModifiers() {
-           // modifiers are ordered by increasing expiration time
-   
-           // TODO (1) : qtmax, energymax,... => for modAttr[ID]... ?
-           this.modQtSlope = this._qtSlope;
-           this.modEnergySlope = this._energySlope;
-   
-           super.applyModifiers();
-       } */
 
     canReceive(_furniture: Furniture) {
         // TODO
@@ -1295,12 +1288,25 @@ export class Agent extends EntityBase implements AgentInterface {
     }
 
     toString() {
+        let baseCond = this._cond.getBaseAttribute()
+        let modCond = this._cond.getModifiedAttribute()
+        let baseQt = this._qt.getBaseAttribute()
+        let modQt = this._qt.getModifiedAttribute()
+        let baseEnergy = this._energy.getBaseAttribute()
+        let modEnergy = this._energy.getModifiedAttribute()
+
         return ' { class:Agent'
             + ', name:' + this.name
             + ', dt:' + this._updateDH
-            + ', cond:' + this._cond.currentValue + '/' + this._cond.baseMaximum + '@' + this._cond.baseSlope
-            + ', qt:' + this._qt + '/' + this._qtMax + '@' + this._qtSlope
-            + ', modCondSlope:' + this.modQtSlope
+            + ', cond:' + baseCond.value
+            + '/' + baseCond.maximum + '(' + modCond.maximum + ')'
+            + '@' + baseCond.slope + '(' + modCond.slope + ')'
+            + ', qt:' + baseQt.value
+            + '/' + baseQt.maximum + '(' + modQt.maximum + ')'
+            + '@' + baseQt.slope + '(' + modQt.slope + ')'
+            + ', energy:' + baseEnergy.value
+            + '/' + baseEnergy.maximum + '(' + modEnergy.maximum + ')'
+            + '@' + baseEnergy.slope + '(' + modEnergy.slope + ')'
             + ' } ';
     }
 }

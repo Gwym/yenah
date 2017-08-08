@@ -21,7 +21,6 @@ export interface RelZoneDao extends ZoneDao {   // implements EntityManager
 // class Zone : Actor's viewpoint
 export abstract class Zone implements TimeRef, SpaceRef {
 
-    //  updateDH = 0 // TODO (0) :  least , highest ? interval ?
     actorOriginalUpdateDH: number // cache value for client side only
     snapshotDH: number
 
@@ -159,7 +158,7 @@ export abstract class Zone implements TimeRef, SpaceRef {
             }
         }
 
-        // TODO (0) : cell updateDH
+        // TODO (0) : cell stabilisation
         /*
         for (let cell of this.cellPool.values()) {
             cell.stabiliseUpTo(newUpdateDH);

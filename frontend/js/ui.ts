@@ -298,7 +298,7 @@ class ActorHtmlCard extends HtmlCard {
         this.actorName.addEventListener('click', () => {
             console.log('hide actor card');
             this.setZone(null);
-        } )
+        })
         this.actorCond = this.appendText();
         this.actorQt = this.appendText();
         this.actorEnergy = this.appendText();
@@ -313,11 +313,13 @@ class ActorHtmlCard extends HtmlCard {
             let actor = this.zone3D.zone.actor;
 
             actor.stabiliseAt(now); // FIXME (0) : now = client now (dynamic) or server  zone.snapshotDH (static) ?
-            this.actorName.textContent = actor.name + ' ' + new Date(actor.updateDH) + ' th:' + actor.theta ;
+            this.actorName.textContent = actor.name + ' ' + new Date(actor.updateDH) + ' th:' + actor.theta;
             let cond = actor.getModifiedCond()
-            this.actorCond.textContent = i18n.conds_titles.cond(actor.cond, cond.maximum, cond.slope);
-            this.actorQt.textContent = i18n.conds_titles.qt(actor.qt, actor.qtMax, actor.qtSlope);
-            this.actorEnergy.textContent = i18n.conds_titles.energy(actor.energy, actor.energyMax, actor.energySlope);
+            this.actorCond.textContent = i18n.conds_titles.cond(actor.getModifiedCond().value, cond.maximum, cond.slope);
+            let qt = actor.getModifiedQt()
+            this.actorQt.textContent = i18n.conds_titles.qt(qt.value, qt.maximum, qt.slope);
+            let energy = actor.getModifiedEnergy()
+            this.actorEnergy.textContent = i18n.conds_titles.energy(energy.value, energy.maximum, energy.slope);
             this.actorMoves.textContent = i18n.characs.move_earth + ' ' + actor.moveEarth
                 + ' ' + i18n.characs.move_water + ' ' + actor.moveAir
                 + (actor.moveAir ? ' ' + i18n.characs.move_air + ' ' + actor.moveAir : '');
@@ -363,7 +365,7 @@ class TargetCellHtmlCard extends HtmlCard {
         this.terrainName.addEventListener('click', () => {
             console.log('hide target card');
             this.unsetCell();
-        } )
+        })
         this.distanceToActor = this.appendText();
         this.inventoryLength = this.appendText();
         this.actionsViewer = new HtmlActionViewer(this.container);

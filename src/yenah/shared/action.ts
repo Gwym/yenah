@@ -66,11 +66,11 @@ export class CoreAction {
         ctx.costs.qt += costs.qt;
         ctx.costs.energy += costs.energy;
 
-        if (ctx.costs.qt > this.zone.actor.qt) {
+        if (ctx.costs.qt > this.zone.actor.getModifiedQt().value) {
             ctx.fails.push(FailId.Qt);
         }
 
-        if (ctx.costs.energy > this.zone.actor.energy) {
+        if (ctx.costs.energy > this.zone.actor.getModifiedEnergy().value) {
             ctx.fails.push(FailId.Energy);
         }
 
@@ -162,6 +162,7 @@ export class ActOnCell extends CoreAction {
 
 export class ActMoveTo extends ActOnCell {
 
+    // FIXME (0) : costs should be negative ?!
     protected getCosts(): Costs {
 
         let actorCell = this.zone.actorCell;
@@ -197,8 +198,8 @@ export class ActMoveTo extends ActOnCell {
         actor.posY = this.target.posY;
 
         let costs = this.getCosts()
-        actor.qt = actor.qt - costs.qt;
-        actor.energy = actor.energy - costs.energy;
+        actor.modifyQt(-costs.qt)
+        actor.modifyEnergy(-costs.energy)
 
         ctx.costs.qt += costs.qt;
         ctx.costs.energy += costs.energy;
@@ -250,8 +251,8 @@ export class ActTurnTo extends ActOnCell {
         actor.theta = newTheta;
 
         let costs = this.getCosts()
-        actor.qt = actor.qt - costs.qt;
-        actor.energy = actor.energy - costs.energy;
+        actor.modifyQt(-costs.qt)
+        actor.modifyEnergy(-costs.energy);
 
         ctx.costs.qt += costs.qt;
         ctx.costs.energy += costs.energy;
@@ -310,8 +311,8 @@ export class ActPickUp extends ActOnFurniture {
         // TODO (2) : hand, backpack ... inventoryRef ?
 
         let costs = this.getCosts()
-        actor.qt = actor.qt - costs.qt;
-        actor.energy = actor.energy - costs.energy;
+        actor.modifyQt(- costs.qt)
+        actor.modifyEnergy(- costs.energy)
 
         ctx.costs.qt += costs.qt;
         ctx.costs.energy += costs.energy;
@@ -392,8 +393,8 @@ export class ActAttack extends ActOnAgent {
         let actor = this.zone.actor;
 
         let costs = this.getCosts()
-        actor.qt = actor.qt - costs.qt;
-        actor.energy = actor.energy - costs.energy;
+        actor.modifyQt(- costs.qt)
+        actor.modifyEnergy(-costs.energy)
 
         // TODO (5) : passive reaction, damage to weapon => other action on upper level ?
         // TODO (3) : clone on solidity and damages ?
@@ -425,7 +426,8 @@ export class ActAttack extends ActOnAgent {
 
 
        //this.target.hurt();
-       this.target.cond -= totalDamages;
+       let happeningEvents = this.target.modifyCond(-totalDamages)
+       dbg.log(happeningEvents.length)
 
         ctx.costs.qt += costs.qt;
         ctx.costs.energy += costs.energy;
