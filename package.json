@@ -4,10 +4,15 @@
   "description": "webgame",
   "main": "server.js",
   "dependencies": {
-    "ws": "~0",
-    "mongodb": "^2.1.16",
-    "node-static": "^0.7.8",
-    "bcrypt": "^1.0.1"
+    "@types/bcrypt": "^1.0.0",
+    "@types/mongodb": "^2.2.15",
+    "@types/node": "^8.0.47",
+    "@types/three": "^0.84.29",
+    "@types/ws": "^3.2.0",
+    "bcrypt": "^1.0.3",
+    "mongodb": "^2.2.31",
+    "source-map-support": "^0.4.16",
+    "ws": "^3.1.0"
   },
   "engine": {
     "node": "*",

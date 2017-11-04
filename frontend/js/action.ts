@@ -46,7 +46,7 @@ class ActionViewer {
             let act = this.action;
 
             let message: ActionRequest = {
-                type: MessageType.Action,
+                type: MessageTypeYenah.Action,
                 actId: act.actId,
                 actorId: act.zone.actor.gId.iId, // FIXME (0) : .indId !!
                 // targetSelector: 

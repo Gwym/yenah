@@ -33,7 +33,7 @@ class MainScene implements Scene {
 		this.showBeingSceneButton.addEventListener('click', function () {
 			// TODO (3) : timeout ?
 			let requestPilot: PilotRequest = {
-				type: MessageType.ReqPilot,
+				type: MessageTypeYenah.ReqPilot,
 				piloted: { limit: 20 },
 				pilotable: { limit : 20 }
 			};

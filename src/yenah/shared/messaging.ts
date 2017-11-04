@@ -1,26 +1,31 @@
 // TODO (4) : manage MTU ? (http://bousk.developpez.com/traductions/gafferongames/construire-son-protocole-jeu-reseau/fragmentation-reassemblage-paquets/)
 
-import { MessageType, c2s_ChannelMessage, s2c_ChannelMessage } from '../../services/shared/messaging'
+import { c2s_ChannelMessage, s2c_ChannelMessage, QueryFilter } from '../../services/shared/messaging'
 import { 
     ActId, IndirectionItemIdentifier, 
     AgentIdRelOptions, PilotableTransientIdDao, TransientIdentifier 
 } from './concept'
 import { RelZoneDao } from "./zone";
 
+export enum MessageTypeYenah  {
+    first = 7, // MessageType._last, // keep at last position ~ enum extends
+    ReqPilot, SetPilot, Zone, Action
+}
+
 export interface PilotRequest extends c2s_ChannelMessage {
-    type: MessageType.ReqPilot
+    type: MessageTypeYenah.ReqPilot
     piloted?: QueryFilter
     pilotable?: QueryFilter
 }
 
 export interface PilotAck extends s2c_ChannelMessage {
-    type: MessageType.ReqPilot
+    type: MessageTypeYenah.ReqPilot
     piloted?: AgentIdRelOptions[]
     pilotable?: PilotableTransientIdDao[]
 }
 
 export interface SetPilotRequest extends c2s_ChannelMessage {
-    type: MessageType.SetPilot
+    type: MessageTypeYenah.SetPilot
     pilotableToSet?: TransientIdentifier[]
     pilotedToUnset?: IndirectionItemIdentifier[]
 }
@@ -28,29 +33,22 @@ export interface SetPilotRequest extends c2s_ChannelMessage {
 export interface SetPilotAck extends SetPilotRequest { } // ack signature === req signature
 
 export interface ZoneRequest extends c2s_ChannelMessage {
-    type: MessageType.Zone
+    type: MessageTypeYenah.Zone
     actorId: IndirectionItemIdentifier
 }
 
 export interface ZoneAck extends s2c_ChannelMessage {
-    type: MessageType.Zone
+    type: MessageTypeYenah.Zone
     zoneGist: RelZoneDao
 }
 
 export interface ActionRequest extends c2s_ChannelMessage {
-    type: MessageType.Action
+    type: MessageTypeYenah.Action
     actId: ActId
     actorId: IndirectionItemIdentifier
     targetEntityId?: IndirectionItemIdentifier
     targetCellSelector?: { x: number, y: number }  // position relative to actor
     expectedActorDH: number
-}
-
-export enum AdminActId { Information, CreateUser, DeleteUsers, ResetWorld, UnitTests, IntegrationTests }
-
-export interface AdminRequest extends c2s_ChannelMessage {
-    type: MessageType.Admin
-    adminActId: AdminActId
 }
 
 export interface AdminInformations extends s2c_ChannelMessage {
@@ -62,11 +60,20 @@ export interface AdminInformations extends s2c_ChannelMessage {
     furnitures: number
     cells: number
 }
+/*
+export enum AdminActId { Information, CreateUser, DeleteUsers, ResetWorld, UnitTests, IntegrationTests }
 
-export interface QueryFilter {
+export interface AdminRequest extends c2s_ChannelMessage {
+    type: MessageType.Admin
+    adminActId: AdminActId
+}
+
+
+*/
+/* export interface QueryFilter {
     limit: number,
     filter?: {
         // TODO (2) : filters
     }
-}
+}*/
 

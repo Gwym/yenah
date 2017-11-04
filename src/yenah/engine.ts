@@ -8,16 +8,15 @@ import {
     AgentOptions, EntityOptions, AgentIdRelOptions, PilotableAbsIdDao, PilotableTransientIdDao, CellDao, FurnitureIdDao, AgentIdOptions,
     EntityBase, Agent, Furniture, Target, EntityInterface
 } from './shared/concept';
-import { UserOptions, MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage, ErrMsg } from '../services/shared/messaging'
+import { UserOptions, MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage, ErrMsg, QueryFilter, AdminRequest } from '../services/shared/messaging'
 import {
     Dispatcher, UserSession
 } from '../services/dispatcher';
 import {
-    ZoneRequest, ZoneAck, ActionRequest, PilotRequest, PilotAck, SetPilotRequest, SetPilotAck,
-    QueryFilter, AdminRequest
+    ZoneRequest, ZoneAck, ActionRequest, PilotRequest, PilotAck, SetPilotRequest, SetPilotAck, MessageTypeYenah
 } from './shared/messaging';
 import {
-    AsyncPersistor, IndirectionDictionary, IndirectionSaveDao, IndirectionIdDao, SaveZoneDao, SaveByIdDao, SavePosDao, SaveByIdFullDao, SaveByIdVarDao, BulkSaveResult
+    AsyncPersistorYenah, IndirectionDictionary, IndirectionSaveDao, IndirectionIdDao, SaveZoneDao, SaveByIdDao, SavePosDao, SaveByIdFullDao, SaveByIdVarDao, BulkSaveResult
 } from "./persistor";
 
 import { AdminDispatcher } from "./admin";
@@ -362,19 +361,19 @@ export class ServerEngine extends Dispatcher {
 
     dispatchWsCommand(cmd: c2s_ChannelMessage, user: YeanhUserSession): void {
 
-        if (cmd.type === MessageType.Zone) {
+        if (cmd.type === MessageTypeYenah.Zone) {
 
             this.sendZoneGist((<ZoneRequest>cmd).actorId, user);
         }
-        else if (cmd.type === MessageType.Action) {
+        else if (cmd.type === MessageTypeYenah.Action) {
 
             this.performAction(<ActionRequest>cmd, user);
         }
-        else if (cmd.type === MessageType.ReqPilot) {
+        else if (cmd.type === MessageTypeYenah.ReqPilot) {
 
             this.pilotRequest(<PilotRequest>cmd, user);
         }
-        else if (cmd.type === MessageType.SetPilot) {
+        else if (cmd.type === MessageTypeYenah.SetPilot) {
 
             this.setPilot(<SetPilotRequest>cmd, user);
         }
@@ -425,7 +424,7 @@ export class ServerEngine extends Dispatcher {
                 }
 
                 dbg.log(" ---- piloted sequence done  ----");
-                let ack: PilotAck = { type: MessageType.ReqPilot, piloted: pilotedRelList };
+                let ack: PilotAck = { type: MessageTypeYenah.ReqPilot, piloted: pilotedRelList };
                 user.send(ack);
             })
             .catch((e) => {
@@ -458,7 +457,7 @@ export class ServerEngine extends Dispatcher {
                     // dbg.log(JSON.stringify(transPilotableList));
                     dbg.log(' ---- pilotable sequence done ' + transPilotableList.length + ' ----');
                     // let ack: PilotableAck = { type: MessageType.Pilotable, pilotable: agentGistArray };
-                    let ack: PilotAck = { type: MessageType.ReqPilot, pilotable: transPilotableList };
+                    let ack: PilotAck = { type: MessageTypeYenah.ReqPilot, pilotable: transPilotableList };
                     user.send(ack);
                 })
                 .catch((e) => {
@@ -489,7 +488,7 @@ export class ServerEngine extends Dispatcher {
 
                 if (res.ok) { // (res.modifiedCount === setPilotMsg.agentList.length) {
 
-                    let ack: SetPilotAck = { type: MessageType.SetPilot, pilotableToSet: setPilotMsg.pilotableToSet };
+                    let ack: SetPilotAck = { type: MessageTypeYenah.SetPilot, pilotableToSet: setPilotMsg.pilotableToSet };
                     user.send(ack);
                 }
                 else {
@@ -514,7 +513,7 @@ export class ServerEngine extends Dispatcher {
 
                 if (res.result.ok && modificationCount === res.modifiedCount) {
 
-                    let ack: SetPilotAck = { type: MessageType.SetPilot, pilotedToUnset: setPilotMsg.pilotedToUnset };
+                    let ack: SetPilotAck = { type: MessageTypeYenah.SetPilot, pilotedToUnset: setPilotMsg.pilotedToUnset };
                     user.send(ack);
                 }
                 else {
@@ -604,7 +603,7 @@ export class ServerEngine extends Dispatcher {
             })
             .then((indirections: IndirectionIdDao[]) => {
 
-                indirectionsAbsDic = AsyncPersistor.indirectionsListToAbsDictionary(indirections);
+                indirectionsAbsDic = AsyncPersistorYenah.indirectionsListToAbsDictionary(indirections);
 
                 if (!indirectionsAbsDic[absZone.actor.gId.toIdString()]) {
                     throw 'getZoneGist > actor not found from rel actorId ' + absZone.actor.gId.toIdString();
@@ -616,7 +615,7 @@ export class ServerEngine extends Dispatcher {
             })
             .then((relZoneGist: RelZoneDao) => {
 
-                let ack: ZoneAck = { type: MessageType.Zone, zoneGist: relZoneGist };
+                let ack: ZoneAck = { type: MessageTypeYenah.Zone, zoneGist: relZoneGist };
                 user.send(ack);
             })
             .catch((e) => {
@@ -654,7 +653,7 @@ export class ServerEngine extends Dispatcher {
             })
             .then((indirections: IndirectionIdDao[]) => {
 
-                indirectionsRelDic = AsyncPersistor.indirectionsListToRelDictionary(indirections);
+                indirectionsRelDic = AsyncPersistorYenah.indirectionsListToRelDictionary(indirections);
 
                 if (!indirectionsRelDic[cmd.actorId]) {
                     throw 'performAction > actor not found from rel actorId ' + cmd.actorId;
@@ -754,12 +753,12 @@ class EngineMonitor {
             isFinite(value) &&
             Math.floor(value) === value &&
             value > 0 &&
-            value <= AsyncPersistor.MAX_FILTER_LIMIT) {
+            value <= AsyncPersistorYenah.MAX_FILTER_LIMIT) {
             return value;
         }
         else {
             //  TODO (1) : monitor.log( input failed );
-            return AsyncPersistor.DEFAULT_FILTER_LIMIT;
+            return AsyncPersistorYenah.DEFAULT_FILTER_LIMIT;
         }
     }
 

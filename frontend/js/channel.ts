@@ -118,10 +118,10 @@ class Channel {
 
         ui.stopSplash();
 
-        if (m.type === MessageType.Zone) {
+        if (m.type === MessageTypeYenah.Zone) {
             G_engine.onZoneGist((<ZoneAck>m).zoneGist);
         }
-        else if (m.type === MessageType.ReqPilot) {
+        else if (m.type === MessageTypeYenah.ReqPilot) {
 
             console.log('ui.pendingScene 0 > ' + ui.pendingScene);
             let pilotMsg = <PilotAck>m;
@@ -136,16 +136,16 @@ class Channel {
         else if (m.type === MessageType.User) {
             ui.setUser(<UserSessionAck>m);
             if (G_engine) { // if not in admin
-                let pilotReq: PilotRequest = { type: MessageType.ReqPilot,
+                let pilotReq: PilotRequest = { type: MessageTypeYenah.ReqPilot,
                     piloted: { limit: 20 }
                     }; // on startup, send a piloted request // TODO : limit/filter
                 this.send(pilotReq);
             }
         }
-        else if (m.type === MessageType.SetPilot) {
+        else if (m.type === MessageTypeYenah.SetPilot) {
             console.log('setPilot ack');
             console.log(m);
-            let pilotReq: PilotRequest = { type: MessageType.ReqPilot,
+            let pilotReq: PilotRequest = { type: MessageTypeYenah.ReqPilot,
                  piloted: { limit: 20 },
                  pilotable: { limit: 20 } 
                 }; // on piloted change, send a piloted/pilotable request // TODO : limit/filter

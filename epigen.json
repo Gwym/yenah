@@ -1,0 +1,9 @@
+{
+    "shared": [
+        "src/yenah/shared/action.ts",
+        "src/yenah/shared/concept.ts",
+        "src/yenah/shared/zone.ts",
+        "src/services/shared/messaging.ts",
+        "src/yenah/shared/messaging.ts"
+    ]
+}

@@ -22,7 +22,6 @@ catch (e) {  // file not found, parse error, ... => set default
     mailServer: '',
     mailSecret: '',
     mongoURL: '', // mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
-    mongoURLLabel: '',
     doCheckCaptcha: false,
     captchaSecret: '',
     doCheckInvitationCode: false,
@@ -38,7 +37,7 @@ configuration.mongoURLLabel = '';
 configuration.mailServer = process.env.OPENSHIFT_MAIL_SERVER || configuration.mailServer;
 configuration.mailSecret = process.env.OPENSHIFT_MAIL_SECRET || configuration.mailSecret;
 configuration.mailSecret = process.env.OPENSHIFT_CAPTCHA_SECRET || configuration.mailSecret;*/
-
+/*
 if ((!configuration.mongoURL || configuration.mongoURL.length === 0) && process.env.DATABASE_SERVICE_NAME) {
 
   var mongoServiceName = process.env.DATABASE_SERVICE_NAME.toUpperCase(),
@@ -61,6 +60,6 @@ if ((!configuration.mongoURL || configuration.mongoURL.length === 0) && process.
     dbg.warn('MongoDB configuration error ' + mongoHost + ' ' + mongoPort + ' ' + mongoDatabase);
   }
 }
-
+*/
 dbg.info(JSON.stringify(configuration));
 

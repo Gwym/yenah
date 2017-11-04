@@ -45,7 +45,7 @@ class Zone3DLoader {
 
 
 	load() {
-		let requestZone: ZoneRequest = { type: MessageType.Zone, actorId: this.actorId }
+		let requestZone: ZoneRequest = { type: MessageTypeYenah.Zone, actorId: this.actorId }
 		G_channel.send(requestZone);
 	}
 
@@ -129,8 +129,7 @@ class Zone3D extends THREE.Scene {
 		this.targetTileSelector.visible = false;
 		this.add(this.targetTileSelector);
 
-
-		let cursorBasicMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.3, transparent: true });
+		let cursorBasicMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, opacity: 0.3, transparent: true });
 		/*  let cursorPhongMaterial = new THREE.MeshPhongMaterial({
 			  color: 0xff0000,
 			  polygonOffset: true,
@@ -138,7 +137,7 @@ class Zone3D extends THREE.Scene {
 			  polygonOffsetUnits: 1
 		  }); */
 		let boxGeometry = new THREE.BoxBufferGeometry(Tile.SIZE, Tile.SIZE, Tile.SIZE);
-		this.cursorTileSelector = new THREE.Mesh(
+		this.cursorTileSelector = new THREE.LineSegments(
 			boxGeometry,
 			cursorBasicMaterial);
 		if (pointerCoord) {

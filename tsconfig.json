@@ -52,13 +52,12 @@
     // "emitDecoratorMetadata": true,         /* Enables experimental support for emitting type metadata for decorators. */
   },
     "files": [
-        "typings/index.d.ts",
         "src/services/shared/messaging.ts",
-        "src/services/numeric/stochastic.ts",
-        "src/services/staticserver.ts",
+        "src/services/shared/stochastic.ts",
+        "src/services/shared/sesam.ts",
+        "src/services/static_server.ts",
         "src/services/logger.ts",
         "src/services/dispatcher.ts",
-        "src/services/sesam.ts",
         "src/configuration.ts",
         "src/yenah/shared/messaging.ts",
         "src/yenah/shared/concept.ts",

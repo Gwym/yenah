@@ -6,8 +6,7 @@ import {
 import { AbsEntityIdentifier, PilotedRelToAbsDictionary, YeanhUserSession, ZoneAbsDao } from './engine'
 
 import { UpdateWriteOpResult, InsertWriteOpResult, BulkWriteResult } from 'mongodb'; // TODO (5) : generic result
-import { XLoginRequest, XRegistrationRequest, UserSessionAck } from '../services/shared/messaging'
-import { QueryFilter } from './shared/messaging'
+import { XLoginRequest, XRegistrationRequest, UserSessionAck, QueryFilter } from '../services/shared/messaging'
 import { UserAsyncManager } from "../services/dispatcher";
 
 export interface IndirectionSaveDao /* ~ extends AbsIdentifier */ {
@@ -78,7 +77,7 @@ export interface AsyncPersistorInterface extends UserAsyncManager {
 }
 */
 
-export abstract class AsyncPersistor implements UserAsyncManager {
+export abstract class AsyncPersistorYenah implements UserAsyncManager {
 
     static MAX_FILTER_LIMIT = 100 // FIXME (5) : MongoDb dependent  
     static DEFAULT_FILTER_LIMIT = 10 // TODO (5) check if DEFAULT_FILTER_LIMIT <= MAX_FILTER_LIMIT

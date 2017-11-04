@@ -9,10 +9,6 @@ logs
 # Dependency directories
 node_modules
 
-# Typescript typings
-typings
-typings.json
-
 # EDI
 .vscode
 
@@ -23,8 +19,16 @@ frontend/tests
 # configuration
 configuration.json
 
+#epigen
+base
+services
+epigen
+
+
 # build
+tmp
 build
+frontend/lib
 frontend/js/client.js
 frontend/js/shared.gen.ts
 

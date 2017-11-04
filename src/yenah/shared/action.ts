@@ -230,9 +230,21 @@ export class ActTurnTo extends ActOnCell {
         return { qt: (outcost_T), energy: (outcost_E) * Math.ceil(actor.getWeight() / Constants.GA_AGENT_MIN_COND) };
     }
 
+    protected checkDirectionIsDifferent(ctx: ActionReport): boolean {
+        
+        let actor = this.zone.actor
+        let newTheta = this.target.getA4A(actor.posX, actor.posY)
+
+        if (actor.theta === newTheta) {
+            ctx.fails.push(FailId.SameDirection)
+            return false
+        }
+        return true
+    }
+
     check(ctx: ActionReport): ActionReport {
 
-        // TODO (0) : checkDirectionIsDifferent 
+        this.checkDirectionIsDifferent(ctx) &&
         this.checkActorQtEnergyCosts(ctx);
 
         return ctx;
@@ -289,14 +301,17 @@ abstract class ActOnFurniture extends CoreAction {
 
 }
 
-// TODO (5) : Pick left or pick right for two handed, and whet with "multi-handed" creatures ? :)
+// TODO (5) : Pick left or pick right for two handed, and what with "multi-handed" creatures ? 
 
 export class ActPickUp extends ActOnFurniture {
 
     check(ctx: ActionReport): ActionReport {
 
+        // FIXME (0) : allow for multiple beings on one cell
+        // this.checkCellCanWelcome(ctx, this.zone.actor) &&
         // TODO (0) : check weight
         this.checkRangeIs1(ctx) &&
+        
             this.checkActorQtEnergyCosts(ctx);
 
         return ctx;

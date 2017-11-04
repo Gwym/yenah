@@ -7,7 +7,7 @@ export enum MatterType { Rock, Flesh, Wood }
 export enum ConceptClass { IndeterminateEntity, Rock, Slug, Sheep, BarbarianF }
 export enum CellType { InderteminateCell, CellEarth, CellSand, CellShallowWater, CellDeepWater }
 export enum ActId { ActMoveTo, ActTurnTo, ActPickUp, ActLayDown, ActGive }
-export enum FailId { NoAct, Qt, Energy, RangeIs1, CannotWelcome, CannotContain }
+export enum FailId { NoAct, Qt, Energy, RangeIs1, CannotWelcome, CannotContain, SameDirection }
 export enum DynAttr { Mass, Cond, Qt, Energy }
 export enum ModAttrKind { Cond, Energy, Qt, MoveEarth, MoveWater, MoveAir, Solidity }
 
@@ -1126,7 +1126,8 @@ export class Agent extends EntityBase implements AgentInterface {
             opt.attributeModifiers ? opt.attributeModifiers.cond : undefined
         );
 
-        this.actions.push(ActId.ActMoveTo, ActId.ActTurnTo, ActId.ActPickUp, ActId.ActLayDown);
+        // FIXME (1) : manipulate beings ? ActId.ActPickUp, ActId.ActLayDown
+        this.actions.push(ActId.ActMoveTo, ActId.ActTurnTo);
 
         this.name = opt.name ? opt.name : '';
         this._massMax = opt.massMax !== undefined ? opt.massMax : Defaults.BEING_MASS;

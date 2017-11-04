@@ -9,7 +9,6 @@
         "strictNullChecks": true
     },
     "files": [
-        "./typings/index.d.ts",
         "./js/shared.gen.ts", 
         "./js/i18n.ts",
         "./js/pointer.ts",

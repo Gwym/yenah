@@ -410,6 +410,19 @@ i18n_en.acts_captions[ActId.ActLayDown] = 'Lay'
 i18n_en.acts_helps[ActId.ActLayDown] = 'Lay '
 i18n_en.acts_captions[ActId.ActGive] = 'Give'
 i18n_en.acts_helps[ActId.ActGive] = 'Give '
+i18n_en.acts_fails[FailId.NoAct] = 'Unknown action'
+i18n_en.acts_fails[FailId.RangeIs1] = 'Inaccessible'
+i18n_en.acts_fails[FailId.CannotWelcome] = 'Occupied'
+i18n_en.acts_fails[FailId.CannotContain] = 'Full'
+i18n_en.acts_fails[FailId.SameDirection] = 'Same direction'
+
+i18n_en.terrain_names[CellType.InderteminateCell] = 'Indeterminate'
+i18n_en.terrain_names[CellType.CellDeepWater] = 'Ocean'
+i18n_en.terrain_names[CellType.CellEarth] = 'Earth'
+i18n_en.terrain_names[CellType.CellSand] = 'Sand'
+i18n_en.terrain_names[CellType.CellShallowWater] = 'Shallow water'
+
+
 
 var i18n_fr: I18n.Corpus = {
 	global_error: 'Une erreur est survenue, veuillez nous excuser pour le désagrément.'
@@ -604,6 +617,7 @@ i18n_fr.acts_fails[FailId.NoAct] = 'Action inconnue'
 i18n_fr.acts_fails[FailId.RangeIs1] = 'Inaccessible'
 i18n_fr.acts_fails[FailId.CannotWelcome] = 'Occupée'
 i18n_fr.acts_fails[FailId.CannotContain] = 'Plein'
+i18n_fr.acts_fails[FailId.SameDirection] = 'Direction identique'
 
 i18n_fr.terrain_names[CellType.InderteminateCell] = 'Indéterminé'
 i18n_fr.terrain_names[CellType.CellDeepWater] = 'Océan'

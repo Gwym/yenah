@@ -3,6 +3,7 @@ import * as Mongo from 'mongodb';
 import * as bcrypt from 'bcrypt';
 
 import { dbg } from '../services/logger'
+import { AdminInformations } from "./shared/messaging";
 import {
     CollectionId,
     AgentItemIdentifier, IndirectionItemIdentifier, UserItemIdentifier,
@@ -10,18 +11,15 @@ import {
     PositionGauge, PilotableAbsIdDao
 } from './shared/concept'
 import {
-    QueryFilter, AdminInformations
-} from './shared/messaging'
-import {
     AbsEntityIdentifier, TransactionManager, ZoneAbsDao, FurnitureIdAbsDao, AgentIdAbsDao,
     PilotedRelToAbsDictionary, AbsAgentIdentifier, YeanhUserSession
 } from './engine'
 import {
-    AsyncPersistor, UserDao, UpdateResult, InsertResult, InsertZoneDao,
+    AsyncPersistorYenah, UserDao, UpdateResult, InsertResult, InsertZoneDao,
     SaveZoneDao, SaveByIdDao, SavePosDao, IndirectionSaveDao,
     IndirectionIdDao
 } from './persistor'
-import { MessageType, XLoginRequest, ErrMsg, XRegistrationRequest, UserSessionAck, UserOptions } from "../services/shared/messaging";
+import { MessageType, XLoginRequest, ErrMsg, XRegistrationRequest, UserSessionAck, UserOptions, QueryFilter } from "../services/shared/messaging";
 
 // not used (aim is to sync db.ts with concept.ts changes, to remember to change MongoPositionQuery if PositionGauge changes in concept)
 export interface _MongoPositionQuery extends PositionGauge {
@@ -50,7 +48,7 @@ interface MongoIndirectionIdDao extends IndirectionSaveDao {
     _id: Mongo.ObjectID
 }
 
-export class MongoPersistor extends AsyncPersistor {
+export class MongoPersistor extends AsyncPersistorYenah {
 
     private tracks: Mongo.Collection
     private sessions: Mongo.Collection

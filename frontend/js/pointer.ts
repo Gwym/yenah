@@ -294,7 +294,7 @@ class Pointer {
                             } */
                         ui.switchToMainScene();
                         ui.startSplash(ui.beingsScene);
-                        let requestSetPilot: SetPilotRequest = { type: MessageType.SetPilot, pilotableToSet: [card.transId] };
+                        let requestSetPilot: SetPilotRequest = { type: MessageTypeYenah.SetPilot, pilotableToSet: [card.transId] };
                         G_channel.send(requestSetPilot);
                     }
                     else if (destinationDeck.id === 'pilotable' && card.indirectId !== undefined ) { // ~ && card.isPiloted
@@ -311,7 +311,7 @@ class Pointer {
                            } */
                         ui.switchToMainScene();
                         ui.startSplash(ui.beingsScene);
-                        let requestSetPilot: SetPilotRequest = { type: MessageType.SetPilot, pilotedToUnset: [card.indirectId] };
+                        let requestSetPilot: SetPilotRequest = { type: MessageTypeYenah.SetPilot, pilotedToUnset: [card.indirectId] };
                         G_channel.send(requestSetPilot);
                     }
                     /* else {
@@ -395,11 +395,11 @@ class Pointer {
             ui.startSplash(ui.beingsScene);
 
             if (card.transId !== undefined) {
-                let requestSetPilot: SetPilotRequest = { type: MessageType.SetPilot, pilotableToSet: [card.transId] };
+                let requestSetPilot: SetPilotRequest = { type: MessageTypeYenah.SetPilot, pilotableToSet: [card.transId] };
                 G_channel.send(requestSetPilot);
             }
             else if (card.indirectId !== undefined) {
-                let requestSetPilot: SetPilotRequest = { type: MessageType.SetPilot, pilotedToUnset: [card.indirectId] };
+                let requestSetPilot: SetPilotRequest = { type: MessageTypeYenah.SetPilot, pilotedToUnset: [card.indirectId] };
                 G_channel.send(requestSetPilot);
             }
             else {
