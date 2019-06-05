@@ -46,7 +46,7 @@ class Channel {
         // TODO (2) : onerror ?
     }
 
-    onChannelOpen(event: Event) {
+    onChannelOpen(_event: Event) {
 
        // ui.setConnectedState('websocket_connected');
         ui.addInfo(i18n.websocket_connected);
@@ -152,7 +152,7 @@ class Channel {
             this.send(pilotReq);
         }
         else if (m.type === MessageType.Admin) {
-            dispatchAdminAck(m);
+            dispatchAdminAck(<AdminRequest>m); // AdminRequest ~ AdminAck
         }
         else {
             console.error('Unknown message type ' + m.type);

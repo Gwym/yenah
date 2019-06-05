@@ -50,7 +50,7 @@ class ActionViewer {
                 actId: act.actId,
                 actorId: act.zone.actor.gId.iId, // FIXME (0) : .indId !!
                 // targetSelector: 
-                expectedActorDH: act.zone.actorOriginalUpdateDH
+                expectedActorDH: act.zone.actorOriginalUpdateDH // FIXME (0) : unsync
             }
 
             if (act.target instanceof Cell) {

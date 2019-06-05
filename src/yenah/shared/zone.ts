@@ -1,5 +1,5 @@
 import { dbg } from "../../services/logger";
-import { SpaceRef, TimeRef, ActorRef, AgentIdOptions, FurnitureIdDao, CellDao, IndirectEntityIdentifier, AgentInterface, Cell, FurnitureInterface, CellIdentifier, World, Agent, Constants, CollectionId, ItemIdentifier, EntityInterface, AttributeEventInterface } from "./concept";
+import { SpaceRef, TimeRef, ActorRef, AgentIdOptions, FurnitureIdDao, CellDao, IndirectEntityIdentifier, AgentInterface, Cell, FurnitureInterface, CellIdentifier, World, Agent, Constants, ItemIdentifier, EntityInterface, AttributeEventInterface, YenahCollectionId } from "./concept";
 
 
 export interface ZoneDao extends SpaceRef, TimeRef, ActorRef {
@@ -221,14 +221,14 @@ export abstract class Zone implements TimeRef, SpaceRef {
         throw 'cell not found ' + relX + ' ' + relY;
     }
 
-    getEntity(cId: CollectionId, iId: ItemIdentifier): EntityInterface {
+    getEntity(cId: YenahCollectionId, iId: ItemIdentifier): EntityInterface {
 
         let entity: EntityInterface | undefined;
 
-        if (cId === CollectionId.Furniture) {
+        if (cId === YenahCollectionId.Furniture) {
             entity = this.furniturePool.get(iId);
         }
-        else if (cId === CollectionId.Agent) {
+        else if (cId === YenahCollectionId.Agent) {
             entity = this.agentPool.get(iId);
         }
 

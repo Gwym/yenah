@@ -4,7 +4,7 @@ import { dbg } from '../../services/logger'
 import { Zone } from "./zone";
 
 export enum MatterType { Rock, Flesh, Wood }
-export enum ConceptClass { IndeterminateEntity, Rock, Slug, Sheep, BarbarianF }
+export enum ConceptClass { IndeterminateEntity, Rock, Slug, Sheep, BarbarianF, Stork, Wolf }
 export enum CellType { InderteminateCell, CellEarth, CellSand, CellShallowWater, CellDeepWater }
 export enum ActId { ActMoveTo, ActTurnTo, ActPickUp, ActLayDown, ActGive }
 export enum FailId { NoAct, Qt, Energy, RangeIs1, CannotWelcome, CannotContain, SameDirection }
@@ -13,7 +13,8 @@ export enum ModAttrKind { Cond, Energy, Qt, MoveEarth, MoveWater, MoveAir, Solid
 
 export enum InteractionType { Cut, Blunt, Fire, Acid, Electricity } // , Poison excluded (time dependant)
 
-export enum CollectionId { Indirection, User, Furniture, Agent, Cell, Session } // FIXME (1) :  persistor only information ? or needed by client for Indirection ?
+// FIXME (1) : extends BaseCollectionId, cannot extend enums
+export enum YenahCollectionId { User, Session, Indirection, Furniture, Agent, Cell } 
 
 export const GO_FORWARD = true
 
@@ -27,7 +28,7 @@ export const Constants = {
     DT_IGDAY: 600000, // 1000ms * 60min * 10h => 1 ig day = 10h irl 
     DT_IGYEAR: 43200000, // 1000ms * 60min * 24h * 30days *  => 1 ig year ~ 1 month irl 
 
-    MAX_VISION_RADIUS: 4,  // 32, //  4 : devel
+    MAX_VISION_RADIUS: 6,  // 32, //  4 : devel
     MAX_VEGETATION: 127,
 
     NO_SLOPE: 0,
@@ -148,7 +149,7 @@ export abstract class GenericIdentifier {
 export class CellIdentifier extends GenericIdentifier {
     constructor(public x: number, public y: number) {
         super();
-        this.cId = CollectionId.Cell;
+        this.cId = YenahCollectionId.Cell;
         // this.x = x;
         // this.y = y;
     }
@@ -380,7 +381,7 @@ export class LinearAttribute implements LinearAttributeInterface {
                 nextMaxReachingInstant = this._currentInstant + (currentMax - this._value) / currentSlope
             }
             else if (this._value === currentMax) {
-                dbg.log('skip MaxReaching event, max already reached')
+               //  dbg.log('skip MaxReaching event, max already reached')
             }
             else {
                 throw 'attribute value exceeds maximum (with modification)'
@@ -616,7 +617,7 @@ interface CartesianPosition extends PositionGauge {
 
 export class EntityIdentifier extends GenericIdentifier {
     iId: ItemIdentifier // ~ item Id (local to collection, list, table...)
-    constructor(cId: CollectionId, iId: ItemIdentifier) {
+    constructor(cId: YenahCollectionId, iId: ItemIdentifier) {
         super();
         this.cId = cId;
         // this.iId = new ItemIdentifier(iId);
@@ -632,7 +633,7 @@ export class IndirectEntityIdentifier extends EntityIdentifier {
     iId: IndirectionItemIdentifier
 
     constructor(indId: IndirectionItemIdentifier) {
-        super(CollectionId.Indirection, indId);
+        super(YenahCollectionId.Indirection, indId);
         // this.iId = new IndirectionItemIdentifier(indId);
         this.iId = indId;
     }
@@ -918,7 +919,7 @@ export interface FurnitureInterface extends EntityInterface {
 }
 
 interface FurnitureConstructor {
-    new(opt: EntityOptions): FurnitureInterface; // TODO (1) : FurnitureOptions extends EntityOptions ?
+    new(opt: EntityIdOptions): FurnitureInterface; // TODO (1) : FurnitureOptions extends EntityOptions ?
 }
 
 export class Furniture extends EntityBase implements FurnitureInterface {
@@ -953,7 +954,7 @@ export class Furniture extends EntityBase implements FurnitureInterface {
 export class AgentIdentifier extends EntityIdentifier {
     iId: AgentItemIdentifier
     constructor(iId: string) {
-        super(CollectionId.Agent, iId);
+        super(YenahCollectionId.Agent, iId);
     }
 }
 
@@ -1066,7 +1067,7 @@ export interface AgentInterface extends EntityInterface {
 }
 
 interface AgentConstructor {
-    new(opt: AgentOptions): AgentInterface;
+    new(opt: AgentIdOptions): AgentInterface;
 }
 
 export class Agent extends EntityBase implements AgentInterface {

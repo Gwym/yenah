@@ -244,9 +244,9 @@ class Pointer {
             e.dataTransfer.setData('text/plain', data);
         }, false);
 
-        element.addEventListener('dragend', function (e: DragEvent) {
+        element.addEventListener('dragend', function (_e: DragEvent) {
 
-            let card: CardWrapper = <CardWrapper>this;
+            // let card: CardWrapper = <CardWrapper>this;
             //  console.log('dragend ' + card.id + ' isPilotable: ' + card.isPilotable);
             this.style.opacity = '';
             (<HTMLElement>document.getElementById('piloted')).className = 'pilotedStandard';
@@ -366,7 +366,7 @@ class Pointer {
             if (e.stopPropagation) { e.stopPropagation(); }
             if (e.preventDefault) e.preventDefault();
 
-            let element: HTMLElement = <HTMLElement>e.target;
+           // let element: HTMLElement = <HTMLElement>e.target;
 
             // element.className = 'over';
             //  e.dataTransfer.dropEffect = 'move';
@@ -379,7 +379,7 @@ class Pointer {
             if (e.stopPropagation) { e.stopPropagation(); }
             if (e.preventDefault) e.preventDefault();
 
-            let element: HTMLElement = <HTMLElement>e.target;
+           //  let element: HTMLElement = <HTMLElement>e.target;
 
             // element.className = 'over';
             //  e.dataTransfer.dropEffect = 'move';

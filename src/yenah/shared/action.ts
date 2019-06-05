@@ -208,6 +208,7 @@ export class ActMoveTo extends ActOnCell {
     }
 }
 
+// FIXME (1) : min = 0 allow to move/turn with 0 move
 export class ActTurnTo extends ActOnCell {
 
     protected getCosts(): Costs {

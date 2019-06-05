@@ -3,17 +3,18 @@
 // TODO (5) : Store<T> 
 
 interface Entity3DCallback { (model: Entity3D): void }
-interface Entity3DCallbackList {
+/* interface Entity3DCallbackList {
     [index: number]: Entity3DCallback
     length: number
     push: (cb: Entity3DCallback) => void
-}
-interface Entity3DCallbackDictionary { [index: string]: Entity3DCallbackList | null }
+}*/
+type Entity3DCallbackList = Entity3DCallback[]
+interface Entity3DCallbackDictionary { [index: string]: Entity3DCallbackList | undefined }
 
 class Store {
 
     private modelStock: { [index: string]: Entity3D | null } = {} // Entity3DDictionary
-    private modelCallbacks: Entity3DCallbackDictionary = {}
+    private modelCallbackLists: Entity3DCallbackDictionary = {}
     private textureStock: { [index: string]: THREE.Texture | null } = {} // TextureDictionary
 
     /* preLoadModels() {
@@ -35,16 +36,16 @@ class Store {
             return;
         }
         else {
-            if (!this.modelCallbacks[url]) {
+            if (!this.modelCallbackLists[url]) {
 
-                this.modelCallbacks[url] = [];
-                (<Entity3DCallbackList>(this.modelCallbacks[url])).push(callback);
+                this.modelCallbackLists[url] = [];
+                (<Entity3DCallbackList>(this.modelCallbackLists[url])).push(callback);
 
-                let p = new Promise<Entity3D>((resolve, reject) => {
+                new Promise<Entity3D>((resolve, _reject) => {
 
                     let jsonLoader = new THREE.JSONLoader();
                     jsonLoader.load(url, (geometry, materials) => {
-                        dbg.log('Loader model  > ' + url);
+                        console.log('Loader model  > ' + url);
                         this.modelStock[url] = this.createEntity3D(geometry, materials); // FIXME : resolve(geo, mat) and then createEntity
                         resolve(<Entity3D>this.modelStock[url]);
                     })
@@ -52,17 +53,18 @@ class Store {
 
                   //  this.modelStock[url] = entity;
 
-                    let callbacks = this.modelCallbacks[url];
+                    let callbacks = this.modelCallbackLists[url];
 
-                    if (callbacks !== null && callbacks.length > 0) {
+                    if (callbacks !== undefined && callbacks.length > 0) {
 
-                        dbg.log('Store model callback > ' + url + ' serving:' + callbacks.length);
+                        console.log('Store model callback > ' + url + ' serving:' + callbacks.length);
 
                         for (let i = 0; i < callbacks.length; i++) {
                             callbacks[i](entity.clone());
                         }
 
-                        this.modelCallbacks[url] = null;
+                        delete this.modelCallbackLists[url]
+                        this.modelCallbackLists[url] = undefined;
                     }
                     else {
                         console.error('Store > No callback for ' + url);
@@ -72,8 +74,8 @@ class Store {
                 });
             }
             else {
-                (<Entity3DCallbackList>(this.modelCallbacks[url])).push(callback);
-                console.log('Store > loads pending ' + url + ' count:' + (<Entity3DCallbackList>(this.modelCallbacks[url])).length);
+                (<Entity3DCallbackList>(this.modelCallbackLists[url])).push(callback);
+                console.log('Store > loads pending ' + url + ' count:' + (<Entity3DCallbackList>(this.modelCallbackLists[url])).length);
             }
         }
     }
@@ -82,20 +84,17 @@ class Store {
 
         // console.info({symbol: 'YENAH.Tile.addAgentToTile', geometry:geometry, materials:materials });
 
-        let material: THREE.Material;
-
         if (!materials) {
             console.error('No material ' + materials);
-            material = new THREE.MeshLambertMaterial();
+            materials = []
+            materials.push(new THREE.MeshLambertMaterial())
         }
-        else {
-            material = new THREE.MeshFaceMaterial(materials);
-        }
+       // else { material = new THREE.MeshFaceMaterial(materials); }
         // var geo = geometry.clone();
         // var modifier = new THREE.SubdivisionModifier( 1 );
         // modifier.modify( smooth );
 
-        var entity = new Entity3D(geometry, material);
+        var entity = new Entity3D(geometry, materials);
         // entity.scale.set(10, 10, 10);
         entity.rotateX(Math.PI / 2); // FIXME ?!
         //   entity.position.z += 50;
@@ -118,7 +117,7 @@ class Store {
             texture = new THREE.Texture(image);
             this.textureStock[url] = texture;
 
-            let p = new Promise<THREE.Texture>((resolve, reject) => {
+            new Promise<THREE.Texture>((resolve, reject) => {
 
                 image.onload = function () { resolve(texture) };
                 image.onerror = function (err) { reject(err); console.error('Failed to load ' + url + ' ' + err); };

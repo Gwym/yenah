@@ -61,7 +61,7 @@ class HtmlUI {
             infoLine.className = 'error_message';
         }
 
-        infoLine.onclick = (e) => {
+        infoLine.onclick = (_e) => {
             if (infoLine) {
                 console.log('remove click ' + infoLine.textContent);
                 this.infoBox.removeChild(infoLine);
@@ -90,7 +90,7 @@ class HtmlUI {
         }
     }
 
-    setConnectedState(state: string) {
+    setConnectedState(_state: string) {
 
 
         //  console.log('TODO Set ConnectedState ' + state);
@@ -138,7 +138,7 @@ class HtmlUI {
         }
     }
 
-    viewReports(zone: RelZone) {
+    viewReports(_zone: RelZone) {
 
     }
 }
@@ -170,7 +170,7 @@ class HtmlActionButton {
          this.button.textContent = text;
      } */
 
-    update(now: number) {
+    update(_now: number) {
 
         let costs = { qt: 0, energy: 0 };
         let actCtx = this.actView.action.check(new ActionReport(true, [], costs));
@@ -203,7 +203,7 @@ class HtmlActionViewer {
     //   private cell: Cell | null = null
     //   private entity: Furniture | null = null
     private container: HTMLElement
-    private target: Target | undefined
+   // private target: Target | undefined
 
     constructor(parent: HTMLElement) {
         this.container = document.createElement('div');
@@ -219,7 +219,7 @@ class HtmlActionViewer {
 
     setTarget(zone: RelZone, target: Target) {
 
-        this.target = target;
+       // this.target = target;
         HtmlUI.empty(this.container);
         this.buttons = [];
 
@@ -248,7 +248,7 @@ class HtmlActionViewer {
 
         console.log('unsetTarget ');
 
-        this.target = undefined;
+       // this.target = undefined;
         HtmlUI.empty(this.container);
         this.buttons = [];
     }

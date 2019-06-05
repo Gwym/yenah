@@ -10,7 +10,7 @@ interface spfmPattern {
 // multiple
 let spfm = function (pattern: string): spfmPattern {
 	return function (...args: any[]) {
-		return pattern.replace(/{(\d+)}/g, function (match, number) {
+		return pattern.replace(/{(\d+)}/g, function (_match, number) {
 			return typeof args[number] !== 'undefined' ? args[number] : '(?)';
 		});
 	}
@@ -23,7 +23,7 @@ interface spf2Pattern {
 // value / maxValue pattern
 let spf2 = function (pattern: string): spf2Pattern {
 	return function (v: number, m: number) {
-		return pattern.replace(/{(\d+)}/g, function (match, number) {
+		return pattern.replace(/{(\d+)}/g, function (_match, number) {
 			return number == 0 ? String(v) : String(m);
 		});
 	}
@@ -36,7 +36,7 @@ interface spf3Pattern {
 // value / maxValue / regain pattern
 let spf3 = function (pattern: string): spf3Pattern {
 	return function (v: number, m: number, r: number) {
-		return pattern.replace(/{(\d+)}/g, function (match, number) {
+		return pattern.replace(/{(\d+)}/g, function (_match, number) {
 			if (number == 0) return String(v)
 			else if (number == 1) return String(m)
 			else return String(r);

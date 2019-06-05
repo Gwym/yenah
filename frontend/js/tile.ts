@@ -1,6 +1,6 @@
 
 
-function $(name: string) {
+function $(_name: string) {
 
 }
 
@@ -36,7 +36,7 @@ class Tile extends Entity3D {
 
     constructor(zone: RelZone,
         cell: Cell,
-        texture: THREE.Texture = G_store.getTexture('textures/tile.png')
+        texture: THREE.Texture = G_store.getTexture('textures/tile.jpg')
        // ,terrain?: string = i18n.terrain.indeterminate
     ) {
 
@@ -66,15 +66,8 @@ class TileEarth extends Tile {
 
     constructor(zone: RelZone, cell: CellEarth) {
 
-        let texture: THREE.Texture;
-
-        if (cell.vegetation > 4) {
-            texture = G_store.getTexture('textures/grass.jpg');
-        }
-        else {
-            texture = G_store.getTexture('textures/soil.png');
-        }
-
+        let texture: THREE.Texture = G_store.getTexture('textures/soil' + cell.vegetation + '.jpg');
+        
         super(zone, cell, texture);
     }
 }
@@ -85,7 +78,7 @@ class TileSand extends Tile {
 
         let texture: THREE.Texture;
 
-        texture = G_store.getTexture('textures/sand.png');
+        texture = G_store.getTexture('textures/sand.jpg');
 
         super(zone, cell, texture);
     }
@@ -97,7 +90,7 @@ class TileShallowWater extends Tile {
 
         let texture: THREE.Texture;
 
-        texture = G_store.getTexture('textures/shallowwater.png');
+        texture = G_store.getTexture('textures/shallowwater.jpg');
 
         super(zone, cell, texture);
     }
@@ -109,7 +102,7 @@ class TileDeepWater extends Tile {
 
         let texture: THREE.Texture;
 
-        texture = G_store.getTexture('textures/deepwater.png');
+        texture = G_store.getTexture('textures/deepwater.jpg');
 
         super(zone, cell, texture);
     }

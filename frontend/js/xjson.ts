@@ -3,8 +3,8 @@
 function setUserSession(authId: string | false) {
 
   if (typeof authId === 'string') {
-    let days = 1;
-    var date = new Date();
+    //let days = 1;
+    let date = new Date();
     date.setTime(date.getTime() + cookieExpiration);
     document.cookie = 'authId=' + authId + '; expires=' + date.toUTCString();
     console.log('setUserAuth > identification ok, authId:' + authId + ' cookie:' + document.cookie);
@@ -87,7 +87,7 @@ var onloadCallback = function () {
 };
 
 // XUserSessionAck ~ XRegistrationAck, XLoginAck, XCheckSessionAck, XCloseSessionAck
-var XUserSessionAck: (this: XMLHttpRequest, ev: Event) => any = function (this: XMLHttpRequest, ev: Event): any {
+var XUserSessionAck: (this: XMLHttpRequest, ev: Event) => any = function (this: XMLHttpRequest, _ev: Event): any {
 
   console.log('XUserSessionAck >');
   console.log(this.responseText);
@@ -282,7 +282,7 @@ var XCloseSession = function () {
 
 // registration.html onload
 // TODO (0) CORS
-var xConfigureRegistration = function (form: HTMLFormElement) {
+var xConfigureRegistration = function (_form: HTMLFormElement) {
 
   let sessionId = getUserSessionId();
 
@@ -315,7 +315,7 @@ var xConfigureRegistration = function (form: HTMLFormElement) {
 }
 
 
-var xConfigureRegistrationAck: (this: XMLHttpRequest, ev: Event) => any = function (this: XMLHttpRequest, ev: Event): any {
+var xConfigureRegistrationAck: (this: XMLHttpRequest, ev: Event) => any = function (this: XMLHttpRequest, _ev: Event): any {
 
   console.log('xConfigureRegistrationAck >');
   console.log(this.responseText);
@@ -372,7 +372,7 @@ var xConfigureRegistrationAck: (this: XMLHttpRequest, ev: Event) => any = functi
         // <script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script> 
         let captchaUrl = "https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit";
         loadCaptachaScript(captchaUrl);
-        let captchaScriptLoader = document.createElement('script');
+        //let captchaScriptLoader = document.createElement('script');
       }
     }
     else {

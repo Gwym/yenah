@@ -129,7 +129,8 @@ class Zone3D extends THREE.Scene {
 		this.targetTileSelector.visible = false;
 		this.add(this.targetTileSelector);
 
-		let cursorBasicMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, opacity: 0.3, transparent: true });
+		//let cursorBasicMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, opacity: 0.3, transparent: true });
+		// let cursorBasicMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 1 });
 		/*  let cursorPhongMaterial = new THREE.MeshPhongMaterial({
 			  color: 0xff0000,
 			  polygonOffset: true,
@@ -138,8 +139,8 @@ class Zone3D extends THREE.Scene {
 		  }); */
 		let boxGeometry = new THREE.BoxBufferGeometry(Tile.SIZE, Tile.SIZE, Tile.SIZE);
 		this.cursorTileSelector = new THREE.LineSegments(
-			boxGeometry,
-			cursorBasicMaterial);
+			new THREE.EdgesGeometry(new THREE.BoxBufferGeometry(Tile.SIZE, Tile.SIZE, Tile.SIZE), 1), //boxGeometry,
+			new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 1 }));
 		if (pointerCoord) {
 			let orig = new THREE.Vector3(-Tile.SIZE / 2, -Tile.SIZE / 2, -Tile.SIZE / 2);
 			let arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), orig, Tile.SIZE, 0xff0000);
@@ -202,34 +203,34 @@ class Zone3D extends THREE.Scene {
 	fillEntities(pool: Map<string, EntityInterface>) {
 		for (let entity of pool.values()) {
 
-				// TODO : (1) entity.parentEntity.addEntity(entity);
-				//	stringCellId = relPosToId(entity.relX, entity.relY);
-				//	tile = tiles[stringCellId];
-				//	tile.pushEntity(entity);
+			// TODO : (1) entity.parentEntity.addEntity(entity);
+			//	stringCellId = relPosToId(entity.relX, entity.relY);
+			//	tile = tiles[stringCellId];
+			//	tile.pushEntity(entity);
 
-				let modelUrl = WorldUI.getModelUrl(entity.entType);
+			let modelUrl = WorldUI.getModelUrl(entity.entType);
 
-				console.log('Store> getModel ' + ConceptClass[entity.entType])
+			console.log('Store> getModel ' + ConceptClass[entity.entType])
 
-				G_store.getModel(modelUrl, (model: Entity3D) => {
+			G_store.getModel(modelUrl, (model: Entity3D) => {
 
-					let scale = Tile.SIZE; // TODO : (3) scale = f(age)
+				let scale = Tile.SIZE; // TODO : (3) scale = f(age)
 
-					model.geometry.computeVertexNormals();
-					model.scale.set(scale, scale, scale);
+				model.geometry.computeVertexNormals();
+				model.scale.set(scale, scale, scale);
 
-					model.geometry.computeBoundingBox();
-					model.position.set(entity.posX * Tile.SIZE, entity.posY * Tile.SIZE, -model.geometry.boundingBox.min.y * scale);
-					model.rotateY((2 - entity.theta) * Math.PI / 4);
-					let bb = model.geometry.boundingBox;
-					let po = model.position;
-					dbg.log(ConceptClass[entity.entType] + ' : ' + po.x + ',' + po.y + ',' + po.z
-						+ ' (' + bb.min.x + ',' + bb.min.y + ',' + bb.min.z + ') ' + ' (' + bb.max.x + ',' + bb.max.y + ',' + bb.max.z + ') ');
-					model.name = ConceptClass[entity.entType]; // three.js scene debug
+				model.geometry.computeBoundingBox();
+				model.position.set(entity.posX * Tile.SIZE, entity.posY * Tile.SIZE, -model.geometry.boundingBox.min.y * scale);
+				model.rotateY((2 - entity.theta) * Math.PI / 4);
+				let bb = model.geometry.boundingBox;
+				let po = model.position;
+				console.log(ConceptClass[entity.entType] + ' : ' + po.x + ',' + po.y + ',' + po.z
+					+ ' (' + bb.min.x + ',' + bb.min.y + ',' + bb.min.z + ') ' + ' (' + bb.max.x + ',' + bb.max.y + ',' + bb.max.z + ') ');
+				model.name = ConceptClass[entity.entType]; // three.js scene debug
 
-					this.addEntity3D(model);
-				})
-			
+				this.addEntity3D(model);
+			})
+
 		}
 	}
 
@@ -245,7 +246,7 @@ class Zone3D extends THREE.Scene {
 		this.cursorTileSelector.position.z = selectedItem.position.z;
 	}
 
-	focusItem(selectedItem: THREE.Mesh, game: ClientEngine) {
+	focusItem(selectedItem: THREE.Mesh, _game: ClientEngine) {
 
 		console.log('Scene.focusItem ' + selectedItem);
         /*   UI.empty('infoBoxContent');

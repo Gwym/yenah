@@ -5,14 +5,14 @@
   "main": "server.js",
   "dependencies": {
     "@types/bcrypt": "^1.0.0",
-    "@types/mongodb": "^2.2.15",
-    "@types/node": "^8.0.47",
-    "@types/three": "^0.84.29",
-    "@types/ws": "^3.2.0",
+    "@types/mongodb": "^2.2.24",
+    "@types/node": "^8.10.49",
+    "@types/three": "^0.84.37",
+    "@types/ws": "^3.2.1",
     "bcrypt": "^1.0.3",
-    "mongodb": "^2.2.31",
+    "mongodb": "^2.2.36",
     "source-map-support": "^0.4.16",
-    "ws": "^3.1.0"
+    "ws": "^3.3.3"
   },
   "engine": {
     "node": "*",
@@ -27,6 +27,7 @@
     "url": "https://github.com/Gwym/yenah.git"
   },
   "author": "Gwym Hendawyr <gwym.hendawyr@gmail.com>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Gwym/yenah/issues"
   },

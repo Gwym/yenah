@@ -115,7 +115,7 @@ var dbg: ClientLogger = {
     error(s: string) {
         console.error(s);
     },
-    attr(s: string) {
+    attr(_s: string) {
         //console.log(s);
     },
     assert(test: boolean, msg: string) {
@@ -163,7 +163,7 @@ var WorldUI: WorldUIDefinition = {
     getModelUrl(classId: ConceptClass): string {
         let url = WorldUI.entity3DConstructor[classId];
         if (!url) {
-            dbg.error('WorldUI.getModelUrl > Missing ' + classId);
+            console.error('WorldUI.getModelUrl > Missing ' + classId);
             url = 'indeterminate';
         }
         return '../models/' + url + '.json';
@@ -171,7 +171,7 @@ var WorldUI: WorldUIDefinition = {
     getCardUrl(classId: ConceptClass): string {
         let url = WorldUI.cardUrl[classId];
         if (!url) {
-            dbg.error('WorldUI.getCardUrl > Missing ' + classId);
+            console.error('WorldUI.getCardUrl > Missing ' + classId);
             url = 'indeterminate';
         }
         return 'url(../cardz/' + url + '.jpg)';
@@ -192,6 +192,8 @@ WorldUI.entity3DConstructor[ConceptClass.Rock] = 'rock';
 WorldUI.entity3DConstructor[ConceptClass.Slug] = 'slug';
 WorldUI.entity3DConstructor[ConceptClass.Sheep] = 'sheep';
 WorldUI.entity3DConstructor[ConceptClass.BarbarianF] = 'barbarian_f';
+WorldUI.entity3DConstructor[ConceptClass.Stork] = 'stork';
+WorldUI.entity3DConstructor[ConceptClass.Wolf] = 'tasmanian_wolf';
 
 
 // TODO : (5) composite creatures
@@ -201,6 +203,8 @@ WorldUI.cardUrl[ConceptClass.IndeterminateEntity] = 'indeterminate';
 WorldUI.cardUrl[ConceptClass.Slug] = 'slug';
 WorldUI.cardUrl[ConceptClass.Sheep] = 'sheep';
 WorldUI.cardUrl[ConceptClass.BarbarianF] = 'barbarian_f';
+WorldUI.cardUrl[ConceptClass.Stork] = 'stork';
+WorldUI.cardUrl[ConceptClass.Wolf] = 'tasmanian_wolf';
 
 // interface Zone3DDictionary { [index: string]: Zone3D | undefined }
 interface Zone3DLoaderDictionary { [index: string]: Zone3DLoader }
@@ -214,7 +218,7 @@ class ClientEngine {
 
     public activeZone3D: Zone3D | null
 
-    private pendingMessages: string[]
+   // private pendingMessages: string[]
     private zone3DPool: Zone3DLoaderDictionary
     private requestAnimationId: number | undefined
     private renderer: THREE.WebGLRenderer
@@ -461,7 +465,7 @@ function Imagination() {
     G_store = new Store();
 
     // Channel creation
-    let loc = window.location;
+   // let loc = window.location;
 
     // if (loc.protocol === "https:") { ws_uri = "wss:"; } else { ws_uri = "ws:"; } ws_uri += "//" + loc.host + "/";
 

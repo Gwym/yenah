@@ -1,7 +1,7 @@
 
 import {
     ItemIdentifier, UserItemIdentifier, AgentItemIdentifier, IndirectionItemIdentifier, EntityIdentifier, EntityOptions, AgentOptions, CellDao, EntityVarOptions,
-    CollectionId, PilotableAbsIdDao, SpaceRef
+    YenahCollectionId, PilotableAbsIdDao, SpaceRef
 } from './shared/concept';
 import { AbsEntityIdentifier, PilotedRelToAbsDictionary, YeanhUserSession, ZoneAbsDao } from './engine'
 
@@ -12,7 +12,7 @@ import { UserAsyncManager } from "../services/dispatcher";
 export interface IndirectionSaveDao /* ~ extends AbsIdentifier */ {
     uId: UserItemIdentifier // user (pilot) absolute iid
     oId: AgentItemIdentifier // observer's absolute iid (AgentIid)
-    tCId: CollectionId // target absolute collection  Id
+    tCId: YenahCollectionId // target absolute collection  Id
     tIId: ItemIdentifier // target absolute iid
     // piloted ~ pseudo index field, optimisation to avoid query like "find(d.oId === d.tIId)" that would use mongo's javascript
     piloted?: boolean
@@ -107,7 +107,7 @@ export abstract class AsyncPersistorYenah implements UserAsyncManager {
     abstract saveZoneDao(saveDao: SaveZoneDao): Promise<BulkSaveResult[]>
     abstract populate(data: InsertZoneDao): Promise<InsertResult[]>
 
-    abstract adminDropCollections(collectionsToDrop: CollectionId[]): void
+    abstract adminDropCollections(collectionsToDrop: YenahCollectionId[]): void
     abstract adminGetInformation(user: YeanhUserSession): void
     abstract adminCreateUserInvitation(user: YeanhUserSession): void
 

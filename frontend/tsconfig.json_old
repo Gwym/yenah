@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "target": "ES6",
+        "noImplicitAny": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "out": "./js/client.js",
+        "sourceMap": true,
+        "strictNullChecks": true
+    },
+    "files": [
+        "./js/shared.gen.ts", 
+        "./js/i18n.ts",
+        "./js/pointer.ts",
+        "./js/ui.ts",
+        "./js/canvasui.ts",
+        "./js/store.ts",
+        "./js/scene.ts",
+        "./js/entity.ts",
+        "./js/agent.ts",
+        "./js/zone.ts",
+        "./js/tile.ts",
+        "./js/cell.ts",
+        "./js/action.ts",
+        "./js/channel.ts",
+        "./js/engine.ts",
+        "./js/xjson.ts",
+        "./js/admin.ts"
+    ]
+}

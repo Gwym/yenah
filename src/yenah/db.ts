@@ -5,7 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { dbg } from '../services/logger'
 import { AdminInformations } from "./shared/messaging";
 import {
-    CollectionId,
+    YenahCollectionId,
     AgentItemIdentifier, IndirectionItemIdentifier, UserItemIdentifier,
     EntityOptions, AgentOptions, CellDao, SpaceRef,
     PositionGauge, PilotableAbsIdDao
@@ -27,9 +27,14 @@ export interface _MongoPositionQuery extends PositionGauge {
     posY: { $gte: number, $lte: number }
 }
 
-interface MongoPositionQuery {
+interface MongoVarPositionQuery {
     "varAttr.posX": { $gte: number, $lte: number }
     "varAttr.posY": { $gte: number, $lte: number }
+}
+
+interface MongoCellPositionQuery {
+    posX: { $gte: number, $lte: number }
+    posY: { $gte: number, $lte: number }
 }
 
 export interface MongoPilotableDao extends PilotableAbsIdDao {
@@ -221,7 +226,7 @@ export class MongoPersistor extends AsyncPersistorYenah {
                 // TODO (1) : check invitation code, reject(ErrMsg.InvalidCode);
                 //  this.users.findOneAndReplace({ invitationCode: userReg.code }, { mail: userReg.mail }, (err, res) => {
 
-                this.users.insertOne(userDocument, (err: Mongo.WriteError, res) => {
+                this.users.insertOne(userDocument, (err, res) => {
                     if (err === null && res.result.ok && res.insertedCount === 1) {
                         dbg.log('createUser > OK ' + userDocument);
                         let userAck: UserSessionAck = { type: MessageType.User, userOptions: { name: userDocument.name } };
@@ -234,11 +239,12 @@ export class MongoPersistor extends AsyncPersistorYenah {
                         // example : { WriteError({"code":11000,"index":0,"errmsg":"E11000 duplicate key error collection: yenah.users index: name_1 dup key: { : \"test\" }","op":{"name":"test","mail":"test@test.fr","hash":"$2a$04$rgeUX7eSraGrtaW7S1Lp0O/0XR9Wya0K5.vuv.kFlIsJGoGcz0DMm","_id":"59589321bed74e09da709bcc"}})
                         if (err.code === 11000) {
                             
-                            if (err.errmsg.indexOf('index: name') !== -1) {
+                            let werr = <Mongo.WriteError><any>err
+                            if (werr.errmsg.indexOf('index: name') !== -1) {
                                 reject(ErrMsg.DuplicateName);
                                 return;
                             }
-                            else if (err.errmsg.indexOf('index: mail') !== -1) {
+                            else if (werr.errmsg.indexOf('index: mail') !== -1) {
                                 reject(ErrMsg.DuplicateMail);
                                 return;
                             }
@@ -461,7 +467,7 @@ export class MongoPersistor extends AsyncPersistorYenah {
             indirection = {
                 uId: userAbsIId,
                 oId: agentId,
-                tCId: CollectionId.Agent,
+                tCId: YenahCollectionId.Agent,
                 tIId: agentId,
                 piloted: true
             }
@@ -576,9 +582,17 @@ export class MongoPersistor extends AsyncPersistorYenah {
 
         // https://docs.mongodb.com/v2.2/core/read-operations/#subdocuments
 
-        let query: MongoPositionQuery = {
-            'varAttr.posX': { $gte: originX - radius, $lte: originX + radius },
-            'varAttr.posY': { $gte: originY - radius, $lte: originY + radius }
+        let xMin = originX - radius, xMax = originX + radius,
+            yMin = originY - radius, yMax = originY + radius
+
+        let query: MongoVarPositionQuery = {
+            'varAttr.posX': { $gte: xMin, $lte: xMax },
+            'varAttr.posY': { $gte: yMin, $lte: yMax }
+        };
+
+        let cellQuery: MongoCellPositionQuery = {
+            posX: { $gte: xMin, $lte: xMax },
+            posY: { $gte: yMin, $lte: yMax }
         };
 
         let agents: AgentIdAbsDao[] = [];
@@ -594,7 +608,7 @@ export class MongoPersistor extends AsyncPersistorYenah {
                 .then((resFurnitures: MongoFurnitureIdDao[]) => {
                     // Convert Mongo _id to AbsIdentifier { cId: CollectionId.Furniture, iId: furniture._id.toHexString() } 
                     for (let furniture of resFurnitures) {
-                        (<FurnitureIdAbsDao><any>furniture).gId = new AbsEntityIdentifier(CollectionId.Furniture, furniture._id.toHexString());
+                        (<FurnitureIdAbsDao><any>furniture).gId = new AbsEntityIdentifier(YenahCollectionId.Furniture, furniture._id.toHexString());
                         delete furniture._id;
                         furnitures.push(<FurnitureIdAbsDao><any>furniture);
                     }
@@ -611,10 +625,11 @@ export class MongoPersistor extends AsyncPersistorYenah {
                     }
                     console.log('resAgents : ' + resAgents.length);
 
-                    return this.cells.find(query).toArray(); //  TODO (2) : , { fields: Projections.CellDao }
+                    return this.cells.find(cellQuery).toArray(); //  TODO (2) : , { fields: Projections.CellDao }
                 })
                 .then((resCells: CellDao[]) => { // === MongoCellIdDao (Mongo _id is not used in cells) 
                     console.log('resCells : ' + resCells.length);
+                    // TODO (1) : delete cell _id
 
                     let ZoneDao: ZoneAbsDao = {
                         snapshotDH: snapshotDH,
@@ -690,27 +705,27 @@ export class MongoPersistor extends AsyncPersistorYenah {
         return Promise.all(promises)
     }
 
-    adminDropCollections(collectionsToDrop: CollectionId[]) {
+    adminDropCollections(collectionsToDrop: YenahCollectionId[]) {
 
         // TODO (0) :  options { sessions: true, cells: true ... }
         // TODO (1) : disconnect users
         // this.users.drop(); 
-        if (collectionsToDrop.indexOf(CollectionId.Session) !== -1) {
+        if (collectionsToDrop.indexOf(YenahCollectionId.Session) !== -1) {
             this.sessions.drop(function (err, res) { dbg.log('db.dropCollections > drop sessions ' + (err ? err : '') + (res ? ' res:' + res : '')) });
         }
-        if (collectionsToDrop.indexOf(CollectionId.Indirection) !== -1) {
+        if (collectionsToDrop.indexOf(YenahCollectionId.Indirection) !== -1) {
             this.indirections.drop(function (err, res) { dbg.log('db.dropCollections > drop indirections ' + (err ? err : '') + (res ? ' res:' + res : '')) });
         }
-        if (collectionsToDrop.indexOf(CollectionId.Cell) !== -1) {
+        if (collectionsToDrop.indexOf(YenahCollectionId.Cell) !== -1) {
             this.cells.drop(function (err, res) { dbg.log('db.dropCollections > drop cells ' + (err ? err : '') + (res ? ' res:' + res : '')) });
         }
-        if (collectionsToDrop.indexOf(CollectionId.Agent) !== -1) {
+        if (collectionsToDrop.indexOf(YenahCollectionId.Agent) !== -1) {
             this.agents.drop(function (err, res) { dbg.log('db.dropCollections > drop agents ' + (err ? err : '') + (res ? ' res:' + res : '')) });
         }
-        if (collectionsToDrop.indexOf(CollectionId.Furniture) !== -1) {
+        if (collectionsToDrop.indexOf(YenahCollectionId.Furniture) !== -1) {
             this.furnitures.drop(function (err, res) { dbg.log('db.dropCollections > drop furnitures ' + (err ? err : '') + (res ? ' res:' + res : '')) });
         }
-        if (collectionsToDrop.indexOf(CollectionId.User) !== -1) {
+        if (collectionsToDrop.indexOf(YenahCollectionId.User) !== -1) {
             this.users.drop(function (err, res) { dbg.log('db.dropCollections > drop users ' + (err ? err : '') + (res ? ' res:' + res : '')) });
         }
 

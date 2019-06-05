@@ -1,6 +1,6 @@
 // TODO (4) : manage MTU ? (http://bousk.developpez.com/traductions/gafferongames/construire-son-protocole-jeu-reseau/fragmentation-reassemblage-paquets/)
 
-import { c2s_ChannelMessage, s2c_ChannelMessage, QueryFilter } from '../../services/shared/messaging'
+import { c2s_ChannelMessage, s2c_ChannelMessage, QueryFilter, AdminRequest, MessageType } from '../../services/shared/messaging'
 import { 
     ActId, IndirectionItemIdentifier, 
     AgentIdRelOptions, PilotableTransientIdDao, TransientIdentifier 
@@ -8,7 +8,7 @@ import {
 import { RelZoneDao } from "./zone";
 
 export enum MessageTypeYenah  {
-    first = 7, // MessageType._last, // keep at last position ~ enum extends
+    first = 7, // MessageType._last, // keep at last position ~ enum extends // FIXME (1) : cannot extend enums
     ReqPilot, SetPilot, Zone, Action
 }
 
@@ -60,20 +60,28 @@ export interface AdminInformations extends s2c_ChannelMessage {
     furnitures: number
     cells: number
 }
-/*
-export enum AdminActId { Information, CreateUser, DeleteUsers, ResetWorld, UnitTests, IntegrationTests }
 
-export interface AdminRequest extends c2s_ChannelMessage {
+export enum YenahAdminActId { 
+    first = 6, //AdminActId._last,  // keep at last position ~ enum extends // FIXME (1) : cannot extend enums
+    ResetWorld, EditWorld }
+
+export interface YeanhAdminRequest extends AdminRequest {
     type: MessageType.Admin
-    adminActId: AdminActId
+    adminActId: YenahAdminActId
 }
 
+export interface AdminWorldEditRequest extends AdminRequest {
+    adminActId: YenahAdminActId.EditWorld
+    originX?: number
+    originY?: number
+    radius?: number // TODO (5) : radius/origin are mutually exclusive with zone, make two messages
+    zone?: any
+}
 
-*/
-/* export interface QueryFilter {
-    limit: number,
-    filter?: {
-        // TODO (2) : filters
-    }
-}*/
+export interface AdminWorldEditAck extends s2c_ChannelMessage {
+    type: MessageType.Admin
+    adminActId: YenahAdminActId.EditWorld
+    zone: any // TODO (2) : actor-less admin version of ZoneAbsDao
+}
+
 

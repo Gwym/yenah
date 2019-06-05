@@ -10,7 +10,7 @@ import {
 } from './shared/concept';
 import { UserOptions, MessageType, ToStringId, c2s_ChannelMessage, s2c_ChannelMessage, ErrMsg, QueryFilter, AdminRequest } from '../services/shared/messaging'
 import {
-    Dispatcher, UserSession
+    Dispatcher, UserSession, ConfigurationInterface
 } from '../services/dispatcher';
 import {
     ZoneRequest, ZoneAck, ActionRequest, PilotRequest, PilotAck, SetPilotRequest, SetPilotAck, MessageTypeYenah
@@ -334,11 +334,15 @@ export class TestUser extends YeanhUserSession {
 
 }
 
-export class ServerEngine extends Dispatcher {
+export class YenahServerEngine extends Dispatcher {
 
     // protected db: AsyncPersistor
     // TODO (1) : admin only on conditional compiling ? option ?
     protected adminDispatcher: AdminDispatcher = new AdminDispatcher(this);
+
+    constructor(config: ConfigurationInterface, protected db: AsyncPersistorYenah) {
+        super(config, db)
+    }
 
     createSession(userOptions: YenahUserOptions): YeanhUserSession {
 
@@ -609,7 +613,7 @@ export class ServerEngine extends Dispatcher {
                     throw 'getZoneGist > actor not found from rel actorId ' + absZone.actor.gId.toIdString();
                 }
 
-                dbg.log('sendZoneGist for actor ' + absZone.actor.name + ' now:' + absZone.actor.updateDH, LoggerParts.Filename);
+                dbg.log('sendZoneGist for actor ' + absZone.actor.name + ' updateDH:' + absZone.actor.updateDH, LoggerParts.Filename);
 
                 return absZone.toRelativeDao(indirectionsAbsDic);
             })
