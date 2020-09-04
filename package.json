@@ -10,7 +10,7 @@
     "@types/three": "^0.84.37",
     "@types/ws": "^3.2.1",
     "bcrypt": "^1.0.3",
-    "mongodb": "^2.2.36",
+    "mongodb": "^3.1.13",
     "source-map-support": "^0.4.16",
     "ws": "^3.3.3"
   },
